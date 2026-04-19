@@ -2036,7 +2036,7 @@ document.getElementById('summaryModal').addEventListener('click', e => {
 });
 
 /* ──────────────────────────────────────────────────
-   MOBILE TAB SWITCHING
+   MOBILE TAB SWITCHING & KEYBOARD FIX
 ────────────────────────────────────────────────── */
 const MOB_PANELS = {
   cal:    document.querySelector('.left-col'),
@@ -2061,6 +2061,20 @@ function initMobile() {
   if (window.innerWidth <= 768) {
     mobSwitch('cal'); // show calendar first on mobile
   }
+
+  // Keyboard fix: Hide nav when typing
+  const inputs = document.querySelectorAll('input, textarea, select');
+  inputs.forEach(el => {
+    el.addEventListener('focus', () => {
+      if (window.innerWidth <= 768) document.body.classList.add('modal-open');
+    });
+    el.addEventListener('blur', () => {
+      // Only remove if no modal is actually open
+      const modalOpen = !document.getElementById('markerModal').classList.contains('hidden') || 
+                        !document.getElementById('summaryModal').classList.contains('hidden');
+      if (!modalOpen) document.body.classList.remove('modal-open');
+    });
+  });
 }
 window.addEventListener('resize', () => {
   if (window.innerWidth > 768) {
