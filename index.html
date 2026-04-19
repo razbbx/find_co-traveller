@@ -1,0 +1,2075 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CarpoolSync — Find Your Ride</title>
+  <meta name="description" content="Find or share a carpool ride by dropping a marker on the day's timeline."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    /* ─── RESET & ROOT ─────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      color-scheme: dark;
+      --p3: #c4b5fd; --p4: #a78bfa; --p5: #8b5cf6;
+      --p6: #7c3aed; --p7: #6d28d9; --p9: #4c1d95;
+      --z1: #fafafa; --z4: #a1a1aa; --z5: #71717a;
+      --z6: #52525b; --z7: #3f3f46; --z8: #27272a;
+      --z9: #18181b; --z95: #09090b;
+    }
+
+    /* ─── NO SCROLL — FIXED VIEWPORT ──────────────────── */
+    html, body {
+      height: 100%; width: 100%;
+      overflow: hidden;
+      font-family: 'Outfit', system-ui, sans-serif;
+      color: var(--z1);
+      background: var(--z95);
+    }
+    body {
+      background-image:
+        radial-gradient(ellipse 70% 50% at 0% 0%,   hsla(263,80%,15%,.55) 0%,transparent 65%),
+        radial-gradient(ellipse 70% 50% at 100% 0%,  hsla(265,80%,15%,.45) 0%,transparent 65%),
+        radial-gradient(ellipse 60% 60% at 50% 100%, hsla(250,80%,15%,.35) 0%,transparent 70%);
+    }
+
+    /* ─── SCROLLBAR (for inner panels only) ───────────── */
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:rgba(24,24,27,.4); }
+    ::-webkit-scrollbar-thumb { background:rgba(63,63,70,.5); border-radius:10px; }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(82,82,91,.8); }
+
+    /* ─── KEYFRAMES ─────────────────────────────────────── */
+    @keyframes fadeIn  { from{opacity:0} to{opacity:1} }
+    @keyframes slideUp { from{transform:translateY(14px);opacity:0} to{transform:translateY(0);opacity:1} }
+    @keyframes slideLeft { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes pulse-glow { 0%,100%{box-shadow:0 0 0 0 rgba(139,92,246,0)} 50%{box-shadow:0 0 18px 4px rgba(139,92,246,.4)} }
+    @keyframes markerPop { 0%{transform:translateX(-50%) scale(0)} 70%{transform:translateX(-50%) scale(1.2)} 100%{transform:translateX(-50%) scale(1)} }
+    @keyframes calCellIn { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
+
+    /* ─── UTILITY ───────────────────────────────────────── */
+    .fade-in  { animation: fadeIn  .3s ease-out both; }
+    .slide-up { animation: slideUp .4s ease-out both; }
+    .gradient-text {
+      background: linear-gradient(90deg, var(--p4), var(--p6));
+      -webkit-background-clip: text; background-clip: text; color: transparent; font-weight:700;
+    }
+
+    /* ─── GLASS CARD ──────────────────────────────────── */
+    .glass {
+      background: rgba(24,24,27,.45);
+      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
+      border: 1px solid rgba(39,39,42,.55);
+      border-radius: 1.1rem;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,.55);
+    }
+    .glass-sm { border-radius: .75rem; }
+    .glass:hover { border-color: rgba(63,63,70,.8); transition: border-color .2s; }
+
+    /* ─── INPUTS ──────────────────────────────────────── */
+    .inp {
+      width:100%;
+      background: rgba(24,24,27,.65);
+      border: 1px solid var(--z7);
+      border-radius: .75rem;
+      padding: .7rem 1rem;
+      color: var(--z1);
+      font-family: inherit; font-size: .9rem;
+      outline: none; transition: all .2s;
+    }
+    .inp::placeholder { color: var(--z6); }
+    .inp:focus { border-color: rgba(139,92,246,.55); box-shadow: 0 0 0 3px rgba(139,92,246,.12); }
+
+    /* ─── BUTTONS ─────────────────────────────────────── */
+    .btn-primary {
+      display:inline-flex; align-items:center; justify-content:center; gap:.45rem;
+      background: var(--p6); color:#fff;
+      font-family:inherit; font-weight:500; font-size:.9rem;
+      padding:.7rem 1.4rem; border-radius:.75rem; border:none; cursor:pointer;
+      transition: all .25s; box-shadow: 0 8px 24px -6px rgba(76,29,149,.5);
+    }
+    .btn-primary:hover  { background:var(--p5); transform:translateY(-1px); }
+    .btn-primary:active { transform:scale(.95); }
+    .btn-primary:disabled { opacity:.5; cursor:not-allowed; }
+
+    .btn-secondary {
+      display:inline-flex; align-items:center; justify-content:center; gap:.45rem;
+      background: rgba(39,39,42,.55); color:var(--z1);
+      font-family:inherit; font-weight:500; font-size:.9rem;
+      padding:.7rem 1.4rem; border-radius:.75rem;
+      border:1px solid rgba(63,63,70,.55); cursor:pointer; transition:all .25s;
+    }
+    .btn-secondary:hover  { background:rgba(39,39,42,.9); }
+    .btn-secondary:active { transform:scale(.95); }
+
+    .btn-back {
+      display:inline-flex; align-items:center; gap:.5rem;
+      background: rgba(39,39,42,.55); color:var(--z4);
+      font-family:inherit; font-weight:500; font-size:.88rem;
+      padding:.5rem 1rem; border-radius:.6rem;
+      border:1px solid rgba(63,63,70,.5); cursor:pointer; transition:all .2s;
+    }
+    .btn-back:hover { background:rgba(63,63,70,.6); color:var(--z1); }
+
+    /* ═══════════════════════════════════════════════════
+       VIEW SYSTEM — two full-screen views
+    ═══════════════════════════════════════════════════ */
+    .view {
+      position:fixed; inset:0;
+      display:flex; flex-direction:column;
+      transition: opacity .3s, transform .3s;
+    }
+    .view.hidden {
+      opacity:0; pointer-events:none;
+      transform:translateX(-18px);
+    }
+    
+    /* ─── SHARED HEADER ───────────────────────────────── */
+    .app-header {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:.9rem 1.5rem;
+      border-bottom: 1px solid rgba(39,39,42,.55);
+      background: rgba(9,9,11,.65);
+      backdrop-filter:blur(16px);
+      flex-shrink:0; z-index:50;
+    }
+    .logo {
+      display:flex; align-items:center; gap:.55rem;
+      font-size:1.15rem; font-weight:700;
+    }
+    .logo-icon {
+      width:32px; height:32px;
+      background: linear-gradient(135deg, var(--p5), var(--p7));
+      border-radius:8px; display:flex; align-items:center; justify-content:center;
+      font-size:.95rem;
+    }
+    .header-badge {
+      font-size:.72rem;
+      background: rgba(139,92,246,.14);
+      border:1px solid rgba(139,92,246,.3);
+      color:var(--p3); padding:.28rem .75rem; border-radius:9999px;
+    }
+    .date-pill {
+      display:flex; align-items:center; gap:.4rem;
+      font-size:.8rem; padding:.3rem .85rem; border-radius:9999px;
+      background: rgba(124,58,237,.15); border:1px solid rgba(139,92,246,.25);
+      color:var(--p3);
+    }
+
+    /* ═══════════════════════════════════════════════════
+       VIEW 1 — HOME  (two-column layout)
+    ═══════════════════════════════════════════════════ */
+    #viewHome .home-body {
+      flex:1; display:flex; overflow:hidden;
+      padding:1rem 1.5rem; gap:1rem;
+    }
+
+    /* 3 Column Layout */
+    .left-col  { flex:0 0 380px; display:flex; flex-direction:column; gap:.8rem; overflow:hidden; }
+    .right-col { flex:1; min-width:300px; display:flex; flex-direction:column; gap:.8rem; overflow:hidden; }
+    .log-col   { flex:0 0 280px; display:flex; flex-direction:column; gap:.8rem; overflow:hidden; }
+
+    .log-header {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:.85rem; flex-shrink:0;
+    }
+    .log-header h2 { font-size:1rem; font-weight:700; color:var(--z4); }
+    .log-scroll {
+      flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:.6rem;
+      padding-right:.2rem;
+    }
+    .log-item {
+      padding:.6rem .8rem; border-radius:.6rem; background:rgba(39,39,42,.2);
+      border:1px solid rgba(63,63,70,.3); font-size:.78rem;
+    }
+    .log-date { color:var(--p4); font-weight:600; font-size:.7rem; text-transform:uppercase; margin-bottom:.15rem; }
+    .log-loc  { color:var(--z1); font-weight:500; }
+
+    /* Hero mini */
+    .home-hero { text-align:center; padding:.5rem 0 .25rem; flex-shrink:0; }
+    .home-hero h1 { font-size:1.9rem; font-weight:800; line-height:1.15; }
+    .home-hero p  { color:var(--z5); font-size:.82rem; margin-top:.35rem; }
+
+    /* Chat input */
+    .chat-row { display:flex; gap:.6rem; align-items:center; flex-shrink:0; }
+    .chat-bubble {
+      flex:1; background:rgba(24,24,27,.65);
+      border:1px solid rgba(63,63,70,.5); border-radius:.85rem;
+      padding:.65rem 1rem; display:flex; align-items:center;
+    }
+    .chat-bubble input {
+      flex:1; background:none; border:none; outline:none;
+      color:var(--z1); font-family:inherit; font-size:.875rem;
+    }
+    .chat-bubble input::placeholder { color:var(--z6); }
+
+    /* Quick chips */
+    .quick-chips { display:flex; flex-wrap:wrap; gap:.4rem; flex-shrink:0; }
+    .chip {
+      padding:.28rem .75rem; border-radius:9999px;
+      border:1px solid rgba(63,63,70,.6); background:transparent;
+      color:var(--z4); font-family:inherit; font-size:.75rem; cursor:pointer; transition:all .2s;
+    }
+    .chip:hover, .chip.active {
+      background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.4); color:var(--p3);
+    }
+
+    /* ─── CUSTOM CALENDAR ─────────────────────────────── */
+    .cal-card { padding:1rem 1.1rem; flex-shrink:0; }
+
+    .cal-nav {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:.85rem;
+    }
+    .cal-month-label {
+      font-size:.95rem; font-weight:700; color:var(--z1);
+      letter-spacing:.02em;
+    }
+    .cal-nav-btn {
+      width:28px; height:28px; border-radius:.5rem;
+      background:rgba(63,63,70,.3); border:1px solid rgba(63,63,70,.5);
+      color:var(--z4); cursor:pointer; transition:all .2s;
+      display:flex; align-items:center; justify-content:center; font-size:.8rem;
+    }
+    .cal-nav-btn:hover { background:rgba(139,92,246,.2); color:var(--p3); border-color:rgba(139,92,246,.4); }
+
+    .cal-grid {
+      display:grid; grid-template-columns:repeat(7,1fr); gap:.3rem;
+    }
+    .cal-dow {
+      text-align:center; font-size:.65rem; font-weight:600;
+      color:var(--z6); text-transform:uppercase; letter-spacing:.06em;
+      padding:.25rem 0;
+    }
+    .cal-dow.weekend { color:rgba(139,92,246,.6); }
+
+    .cal-cell {
+      position:relative; aspect-ratio:1;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:.5rem; font-size:.82rem; font-weight:500;
+      cursor:pointer; transition:all .18s;
+      border:1px solid transparent;
+      animation: calCellIn .2s ease-out both;
+    }
+    .cal-cell:hover:not(.empty):not(.past) {
+      background:rgba(139,92,246,.15);
+      border-color:rgba(139,92,246,.3); color:var(--p3);
+    }
+    .cal-cell.other-month { color:var(--z7); cursor:default; }
+    .cal-cell.other-month:hover { background:none; border-color:transparent; color:var(--z7); }
+    .cal-cell.past   { color:var(--z7); cursor:default; opacity:.5; }
+    .cal-cell.today-cell {
+      color:var(--p4); font-weight:700;
+    }
+    .cal-cell.today-cell::after {
+      content:''; position:absolute; bottom:3px; left:50%; transform:translateX(-50%);
+      width:4px; height:4px; background:var(--p4); border-radius:50%;
+    }
+    .cal-cell.selected {
+      background: linear-gradient(135deg, rgba(124,58,237,.6), rgba(139,92,246,.4));
+      border-color:rgba(139,92,246,.7); color:#fff; font-weight:700;
+      box-shadow: 0 0 16px -4px rgba(139,92,246,.5);
+    }
+    .cal-cell.has-markers::before {
+      content:''; position:absolute; top:4px; right:4px;
+      width:5px; height:5px; background:var(--p5); border-radius:50%;
+      opacity:.8;
+    }
+
+    /* View timeline button */
+    .view-btn-wrap { flex-shrink:0; }
+
+    /* RIGHT COLUMN */
+    .right-col {
+      flex:1; display:flex; flex-direction:column; overflow:hidden;
+      min-width:0;
+    }
+    .right-col-header {
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom:.85rem; flex-shrink:0;
+    }
+    .right-col-header h2 { font-size:1rem; font-weight:700; }
+    .group-count-badge {
+      font-size:.72rem; color:var(--p4);
+      background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.22);
+      padding:.2rem .6rem; border-radius:9999px;
+    }
+
+    /* Consolidated scroll */
+    .consolidated-scroll {
+      flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:.85rem;
+      padding-right:.2rem;
+    }
+
+    /* Date group */
+    .cons-date-group { flex-shrink:0; }
+    .cons-date-label {
+      font-size:.72rem; font-weight:600; text-transform:uppercase; letter-spacing:.07em;
+      color:var(--z6); margin-bottom:.45rem; display:flex; align-items:center; gap:.4rem;
+    }
+    .cons-date-label::after {
+      content:''; flex:1; height:1px; background:rgba(63,63,70,.35);
+    }
+
+    /* Ride group card */
+    .cons-group {
+      padding:.85rem 1rem; border-radius:.85rem;
+      background:rgba(24,24,27,.5); border:1px solid rgba(63,63,70,.35);
+      margin-bottom:.5rem; position:relative; overflow:hidden;
+      transition: all .2s; cursor:pointer;
+    }
+    .cons-group:hover { border-color:rgba(139,92,246,.35); transform:translateX(3px); }
+    .cons-group-glow {
+      position:absolute; left:0; top:0; bottom:0; width:3px;
+      background: linear-gradient(to bottom, var(--p5), var(--p7));
+      border-radius:3px 0 0 3px;
+    }
+    .cons-group-time {
+      font-size:.78rem; font-weight:700; color:var(--p4);
+      margin-bottom:.5rem; padding-left:.65rem;
+      display:flex; align-items:center; gap:.4rem;
+    }
+    .cons-riders {
+      display:flex; flex-direction:column; gap:.3rem; padding-left:.65rem;
+    }
+    .cons-rider {
+      display:flex; align-items:center; gap:.55rem;
+    }
+    .cons-rider-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .cons-rider-name { font-size:.82rem; font-weight:600; }
+    .cons-rider-meta { font-size:.72rem; color:var(--z5); }
+    .cons-match-badge {
+      display:inline-flex; align-items:center; gap:.3rem;
+      font-size:.68rem; color:#10b981; background:rgba(16,185,129,.1);
+      border:1px solid rgba(16,185,129,.25); padding:.15rem .55rem; border-radius:9999px;
+      margin-top:.45rem; margin-left:.65rem;
+    }
+
+    /* Empty consolidated */
+    .cons-empty {
+      flex:1; display:flex; flex-direction:column;
+      align-items:center; justify-content:center; text-align:center;
+      color:var(--z7); gap:.65rem; padding:2rem;
+    }
+    .cons-empty-icon { font-size:2.5rem; opacity:.4; }
+    .cons-empty p { font-size:.85rem; line-height:1.5; }
+
+    /* ═══════════════════════════════════════════════════
+       VIEW 2 — TIMELINE
+    ═══════════════════════════════════════════════════ */
+    #viewTimeline { background: transparent; }
+    #viewTimeline .tl-body {
+      flex:1; display:flex; flex-direction:column;
+      padding:1rem 1.5rem 1rem; gap:.85rem; overflow:hidden;
+    }
+
+    /* Timeline centered area */
+    .tl-main {
+      display:flex; flex-direction:column; align-items:center;
+      flex-shrink:0;
+    }
+    .tl-glass {
+      width:100%; padding:1.1rem 1.25rem .9rem;
+    }
+
+    /* ─── TIMELINE TRACK ──────────────────────────────── */
+    .tl-scroll { overflow-x:auto; overflow-y:visible; padding-bottom:.3rem; }
+    .tl-canvas { position:relative; min-width:900px; height:260px; user-select:none; }
+
+    .hour-labels { position:absolute; top:108px; left:0; right:0; height:20px; }
+    .hour-lbl {
+      position:absolute; font-size:.68rem; color:var(--z5);
+      transform:translateX(-50%); white-space:nowrap;
+      cursor:pointer; padding:2px 5px; border-radius:4px;
+      transition:all .15s; user-select:none;
+    }
+    .hour-lbl:hover { color:var(--p3); background:rgba(139,92,246,.15); }
+    .hour-lbl.hl { color:var(--p4); font-weight:700; }
+
+    .tl-track {
+      position:absolute; top:130px; left:0; right:0; height:52px;
+      background:rgba(24,24,27,.65); border:1px solid rgba(63,63,70,.45);
+      border-radius:.85rem; cursor:crosshair; overflow:visible; transition:border-color .2s;
+    }
+    .tl-track:hover { border-color:rgba(139,92,246,.45); }
+    .tl-grad {
+      position:absolute; inset:0; border-radius:inherit;
+      background:linear-gradient(90deg,
+        rgba(124,58,237,.05) 0%, rgba(139,92,246,.13) 25%,
+        rgba(167,139,250,.07) 50%, rgba(139,92,246,.13) 75%,
+        rgba(124,58,237,.05) 100%);
+      pointer-events:none;
+    }
+    .tl-ticks { position:absolute; inset:0; border-radius:inherit; overflow:hidden; pointer-events:none; }
+    .tick { position:absolute; top:0; width:1px; }
+    .tick.major { height:100%; background:rgba(63,63,70,.65); }
+    .tick.half  { height:65%; top:18%; background:rgba(63,63,70,.35); }
+    .tick.minor { height:35%; top:33%; background:rgba(63,63,70,.2); }
+
+    /* Now line */
+    .now-line {
+      position:absolute; top:-6px; bottom:-6px; width:2px;
+      background:linear-gradient(to bottom,transparent,var(--p4),transparent);
+      pointer-events:none; z-index:4;
+    }
+    .now-dot {
+      position:absolute; top:50%; left:50%;
+      transform:translate(-50%,-50%);
+      width:8px; height:8px; background:var(--p4); border-radius:50%;
+      box-shadow:0 0 10px var(--p5); animation:pulse-glow 2s infinite;
+    }
+    .now-lbl {
+      position:absolute; top:-22px; left:50%; transform:translateX(-50%);
+      font-size:.6rem; color:var(--p4); font-weight:600; white-space:nowrap;
+      background:rgba(9,9,11,.85); padding:1px 5px; border-radius:4px;
+    }
+
+    /* Labels row under track */
+    .tl-names { position:absolute; top:195px; left:0; right:0; pointer-events:none; }
+
+    /* ─── MARKERS ─────────────────────────────────────── */
+    .marker {
+      position:absolute; top:50%;
+      transform:translateX(-50%) translateY(-50%);
+      cursor:pointer; z-index:10;
+      animation:markerPop .35s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .marker-pin {
+      width:13px; height:13px; border-radius:50%;
+      border:2.5px solid #fff;
+      box-shadow:0 0 10px rgba(139,92,246,.5),0 2px 8px rgba(0,0,0,.5);
+      transition:transform .2s;
+    }
+    .marker:hover .marker-pin { transform:scale(1.45); }
+    .marker-tooltip {
+      position:absolute; bottom:calc(100% + 14px); left:50%;
+      transform:translateX(-50%) translateY(4px);
+      background:rgba(10,10,13,.98); backdrop-filter:blur(16px);
+      border:1px solid rgba(99,102,241,.35); border-radius:.9rem;
+      padding:.8rem 1rem; width:195px; pointer-events:none;
+      opacity:0; transition:opacity .2s,transform .2s; z-index:50;
+      box-shadow:0 8px 32px rgba(0,0,0,.7), 0 0 0 1px rgba(139,92,246,.08);
+    }
+    .marker-tooltip::after {
+      content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+      border:7px solid transparent; border-top-color:rgba(99,102,241,.35);
+    }
+    .marker:hover .marker-tooltip { opacity:1; transform:translateX(-50%) translateY(0); }
+    .tt-time { font-size:.72rem; color:var(--p4); font-weight:600; margin-bottom:.25rem; }
+    .tt-name { font-size:.88rem; font-weight:700; margin-bottom:.3rem; }
+    .tt-row  { display:flex; align-items:center; gap:.35rem; font-size:.75rem; color:var(--z4); margin-top:.2rem; }
+    .tt-dot  { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+
+    .marker-label {
+      position:absolute; top:calc(100% + 6px); left:50%;
+      transform:translateX(-50%); white-space:nowrap;
+      font-size:.6rem; font-weight:600; color:var(--z5); pointer-events:none;
+    }
+
+    .tl-hint {
+      text-align:center; font-size:.78rem; color:var(--z6); margin-top:.5rem;
+    }
+    .tl-hint span { color:var(--p4); cursor:pointer; font-weight:500; }
+    .tl-hint span:hover { text-decoration:underline; }
+
+    /* ─── RIDE CARDS ─────────────────────────────────── */
+    .rides-wrap {
+      flex:1; overflow:hidden; display:flex; flex-direction:column; min-height:0;
+    }
+    .rides-hdr {
+      display:flex; align-items:center; justify-content:space-between; flex-shrink:0;
+      margin-bottom:.65rem;
+    }
+    .rides-hdr h3 { font-size:.95rem; font-weight:700; }
+    .header-badge {
+      font-size:.72rem; color:var(--p4);
+      background:rgba(139,92,246,.12); border:1px solid rgba(139,92,246,.25);
+      padding:.25rem .7rem; border-radius:9999px; font-weight:600;
+    }
+    .traffic-section { display:flex; align-items:center; gap:.8rem; }
+    .traffic-label { font-size:.68rem; font-weight:700; color:var(--z6); text-transform:uppercase; letter-spacing:.05em; }
+    .traffic-chips { display:flex; gap:.4rem; }
+    .t-chip {
+      font-size:.75rem; font-weight:700; color:#fff;
+      background:linear-gradient(135deg, #ef4444, #f59e0b);
+      padding:.22rem .65rem; border-radius:.5rem; cursor:pointer;
+      box-shadow:0 4px 12px rgba(239,68,68,0.25); border:1px solid rgba(255,255,255,0.2);
+      transition:all .2s;
+    }
+    .t-chip:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(239,68,68,0.4); filter:brightness(1.1); }
+    .rides-grid {
+      flex:1; overflow-y:auto;
+      display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr));
+      gap:.7rem; align-content:start; padding-right:.2rem;
+    }
+    .ride-card {
+      padding:.85rem 1rem; border-radius:.8rem; position:relative; overflow:hidden;
+      background:rgba(24,24,27,.5); border:1px solid rgba(63,63,70,.35);
+      transition:all .22s; cursor:default;
+    }
+    .ride-card:hover { transform:translateY(-2px); border-color:rgba(63,63,70,.8); box-shadow:0 16px 32px rgba(0,0,0,.35); }
+    .ride-accent { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; }
+    .ride-inner { padding-left:.55rem; }
+    .ride-name { font-size:.88rem; font-weight:700; margin-bottom:.15rem; }
+    .ride-time { font-size:.75rem; font-weight:600; margin-bottom:.4rem; }
+    .ride-meta { display:flex; flex-direction:column; gap:.22rem; }
+    .ride-meta-r { display:flex; align-items:center; gap:.35rem; font-size:.73rem; color:var(--z5); }
+    .del-btn {
+      position:absolute; top:.5rem; right:.5rem;
+      background:none; border:none; color:var(--z7); cursor:pointer;
+      font-size:.8rem; padding:.2rem .35rem; border-radius:.35rem; transition:all .2s;
+    }
+    .del-btn:hover { background:rgba(239,68,68,.15); color:#ef4444; }
+
+    .empty-rides {
+      grid-column:1/-1; text-align:center;
+      padding:2rem 1rem; color:var(--z6); font-size:.85rem;
+      background:rgba(24,24,27,.35); border:1px solid rgba(63,63,70,.25);
+      border-radius:.85rem;
+    }
+    .empty-rides svg { display:block; margin:0 auto .75rem; opacity:.25; }
+
+    /* ─── ADMIN DASHBOARD CSS ─── */
+    #viewAdmin { background: var(--z95); overflow-y: auto; display: none; padding-bottom: 3rem; flex-direction: column; }
+    #viewAdmin.active { display: flex; }
+    .admin-body { padding: 1.5rem; max-width: 1200px; margin: 0 auto; width: 100%; }
+    .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+    .stat-card {
+      padding: 1.4rem 1.25rem; border-radius: 1.1rem;
+      background: rgba(24,24,27,0.55); border: 1px solid rgba(63,63,70,0.45);
+      position: relative; overflow: hidden; transition: transform .2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); border-color: rgba(139,92,246,.3); }
+    .stat-card::before {
+      content:''; position:absolute; inset:0;
+      background: linear-gradient(135deg, rgba(139,92,246,.07) 0%, transparent 60%);
+      pointer-events:none;
+    }
+    .stat-icon { font-size: 1.5rem; margin-bottom: .5rem; display: block; }
+    .stat-val { font-size: 2.4rem; font-weight: 800; color: var(--p4); margin-bottom: .15rem; line-height: 1; }
+    .stat-lbl { font-size: .68rem; color: var(--z5); text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+    .stat-sub { font-size: .72rem; color: var(--z6); margin-top: .35rem; }
+
+    /* Admin sections */
+    .admin-section { margin-bottom: 2rem; }
+    .admin-section-hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; padding-bottom: .65rem;
+      border-bottom: 1px solid rgba(63,63,70,.35);
+    }
+    .admin-section-hdr h2 { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+    .admin-section-hdr .badge { font-size: .72rem; color: var(--p4); background: rgba(139,92,246,.12); border: 1px solid rgba(139,92,246,.22); padding: .2rem .6rem; border-radius: 9999px; }
+
+    /* Heatmap bar */
+    .day-bar-wrap { display: flex; flex-direction: column; gap: .5rem; }
+    .day-bar-row { display: flex; align-items: center; gap: .75rem; font-size: .78rem; }
+    .day-bar-label { width: 110px; color: var(--z4); flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .day-bar-track { flex: 1; height: 22px; background: rgba(39,39,42,.5); border-radius: .4rem; overflow: hidden; position: relative; cursor: pointer; transition: all .2s; }
+    .day-bar-track:hover { border: 1px solid rgba(139,92,246,.3); }
+    .day-bar-fill { height: 100%; background: linear-gradient(90deg, var(--p7), var(--p5)); border-radius: .4rem; transition: width .6s cubic-bezier(.34,1.56,.64,1); }
+    .day-bar-count { width: 28px; text-align: right; color: var(--p4); font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+
+    /* Table */
+    .admin-table-wrap { overflow-x: auto; border-radius: 1rem; border: 1px solid rgba(63,63,70,0.4); background: rgba(24,24,27,0.3); }
+    .admin-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    .admin-table th { background: rgba(39,39,42,0.85); text-align: left; padding: .9rem 1rem; color: var(--z4); font-weight: 600; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; border-bottom: 1px solid rgba(63,63,70,0.5); }
+    .admin-table td { padding: .85rem 1rem; border-bottom: 1px solid rgba(63,63,70,0.12); vertical-align: middle; }
+    .admin-table tr:last-child td { border-bottom: none; }
+    .admin-table tr:hover td { background: rgba(139,92,246,0.05); }
+    .admin-badge { padding: .22rem .6rem; border-radius: .45rem; background: rgba(139,92,246,0.15); color: var(--p4); font-size: .72rem; font-weight: 700; white-space: nowrap; }
+    .btn-icon-del { background: none; border: none; color: rgba(239,68,68,.6); cursor: pointer; padding: .4rem; border-radius: .45rem; transition: all .2s; }
+    .btn-icon-del:hover { background: rgba(239,68,68,0.15); color: #ef4444; transform: scale(1.1); }
+
+    /* Phone reveal */
+    .ph-hidden {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: rgba(39,39,42,.7); border: 1px solid rgba(63,63,70,.5);
+      border-radius: .45rem; padding: .2rem .6rem; cursor: pointer;
+      font-size: .78rem; color: var(--z5); user-select: none;
+      transition: all .2s;
+    }
+    .ph-hidden:hover { border-color: rgba(139,92,246,.4); color: var(--p3); background: rgba(139,92,246,.1); }
+    .ph-revealed { font-family: monospace; font-size: .88rem; color: var(--z1); font-weight: 600; }
+
+    /* Marker tooltip phone */
+    .tt-phone-btn {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: rgba(39,39,42,.8); border: 1px dashed rgba(139,92,246,.3);
+      border-radius: .35rem; padding: .15rem .45rem;
+      font-size: .7rem; color: var(--z5); cursor: pointer; transition: all .15s;
+    }
+    .tt-phone-btn:hover { color: var(--p3); border-color: var(--p4); }
+
+    /* Auth gate */
+    #adminAuthGate {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.85); backdrop-filter: blur(18px);
+      z-index: 999; display: flex; align-items: center; justify-content: center;
+    }
+    .auth-card {
+      background: rgba(18,18,20,.95); border: 1px solid rgba(139,92,246,.25);
+      border-radius: 1.25rem; padding: 2.5rem 2rem; width: 100%; max-width: 380px;
+      box-shadow: 0 40px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(139,92,246,.08);
+      text-align: center;
+    }
+    .auth-lock { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+    .auth-title { font-size: 1.4rem; font-weight: 800; margin-bottom: .3rem; }
+    .auth-sub { font-size: .82rem; color: var(--z5); margin-bottom: 1.75rem; }
+    .auth-err { font-size: .78rem; color: #ef4444; margin-top: .6rem; min-height: 1em; }
+
+    /* ═══════════════════════════════════════════════════
+       MODAL
+    ═══════════════════════════════════════════════════ */
+    .modal-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,.72);
+      backdrop-filter:blur(5px); z-index:200;
+      display:flex; align-items:center; justify-content:center; padding:1rem;
+      animation:fadeIn .2s ease-out;
+    }
+    .modal-overlay.hidden { display:none; }
+    .modal-card {
+      width:100%; max-width:430px; padding:1.65rem; position:relative;
+      animation:slideUp .3s ease-out;
+    }
+    .modal-x {
+      position:absolute; top:.9rem; right:.9rem;
+      background:rgba(39,39,42,.7); border:1px solid rgba(63,63,70,.6);
+      color:var(--z4); border-radius:.45rem; width:30px; height:30px;
+      display:flex; align-items:center; justify-content:center;
+      cursor:pointer; font-size:.9rem; transition:all .2s;
+    }
+    .modal-x:hover { background:rgba(63,63,70,.8); color:var(--z1); }
+    .modal-title { font-size:1.2rem; font-weight:700; margin-bottom:.3rem; }
+    .modal-sub   { font-size:.82rem; color:var(--z5); margin-bottom:1.25rem; }
+    .time-pill {
+      font-size:.95rem; font-weight:700; color:var(--p3);
+      background:rgba(124,58,237,.12); border:1px solid rgba(139,92,246,.25);
+      border-radius:.6rem; padding:.55rem .9rem; margin-bottom:1rem;
+      display:flex; align-items:center; gap:.45rem;
+    }
+    .fgroup { margin-bottom:.9rem; }
+    .flabel {
+      display:flex; align-items:center; gap:.35rem;
+      font-size:.76rem; font-weight:500; color:var(--z4); margin-bottom:.4rem;
+    }
+    .color-picker { display:flex; gap:.45rem; flex-wrap:wrap; }
+    .swatch {
+      width:24px; height:24px; border-radius:50%; cursor:pointer;
+      border:2px solid transparent; transition:all .15s;
+    }
+    .swatch:hover { transform:scale(1.15); }
+    .swatch.sel   { border-color:#fff; transform:scale(1.2); box-shadow:0 0 8px rgba(255,255,255,.3); }
+
+    /* ─── TOAST ───────────────────────────────────────── */
+    .toast {
+      position:fixed; bottom:1.5rem; left:50%;
+      transform:translateX(-50%) translateY(100px);
+      background:rgba(14,14,16,.97); border:1px solid rgba(63,63,70,.7);
+      color:var(--z1); padding:.65rem 1.1rem; border-radius:.7rem;
+      font-size:.82rem; font-weight:500; z-index:500;
+      display:flex; align-items:center; gap:.5rem;
+      box-shadow:0 18px 36px rgba(0,0,0,.5);
+      transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+      backdrop-filter:blur(12px); white-space:nowrap;
+    }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+
+    /* ═══════════════════════════════════════════════════
+       MOBILE BOTTOM NAV
+    ═══════════════════════════════════════════════════ */
+    .mob-nav {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(9,9,11,.96); backdrop-filter: blur(20px);
+      border-top: 1px solid rgba(63,63,70,.5);
+      padding: .5rem 0 env(safe-area-inset-bottom, .5rem);
+      justify-content: space-around; align-items: center;
+    }
+    .mob-tab {
+      display: flex; flex-direction: column; align-items: center; gap: .25rem;
+      padding: .4rem .8rem; border-radius: .6rem; cursor: pointer;
+      transition: all .2s; border: none; background: transparent; color: var(--z5);
+      font-family: inherit; font-size: .6rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: .05em; min-width: 60px;
+    }
+    .mob-tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
+    .mob-tab.active { color: var(--p4); }
+    .mob-tab.active svg { filter: drop-shadow(0 0 6px rgba(139,92,246,.6)); }
+
+    body.modal-open .mob-nav { display: none !important; }
+
+    /* ═══════════════════════════════════════════════════
+       RESPONSIVE — MOBILE (≤ 768px)
+    ═══════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      /* Show bottom nav */
+      .mob-nav { display: flex; }
+
+      /* Push view content above bottom nav */
+      #viewHome, #viewTimeline { padding-bottom: 64px; }
+
+      /* Home body becomes single-column with panel switching */
+      #viewHome .home-body {
+        flex-direction: column;
+        padding: .75rem; gap: 0;
+        overflow: hidden; position: relative;
+      }
+
+      /* Each column becomes a full-height swappable panel */
+      .left-col, .right-col, .log-col {
+        flex: 0 0 100%; width: 100%; min-width: 100%;
+        display: none; /* JS toggles .mob-panel-active */
+        overflow-y: auto;
+      }
+      .left-col.mob-panel-active,
+      .right-col.mob-panel-active,
+      .log-col.mob-panel-active { display: flex; }
+
+      /* Header compact */
+      .app-header { padding: .65rem 1rem; }
+      .traffic-label { display: none; }
+      .traffic-chips { gap: .3rem; }
+      .t-chip { font-size: .7rem; padding: .2rem .5rem; }
+
+      /* Hero smaller */
+      .home-hero h1 { font-size: 1.4rem; }
+      .home-hero p  { font-size: .78rem; }
+
+      /* Calendar fills width */
+      .cal-card { padding: .75rem; }
+      .cal-cell  { font-size: .78rem; }
+
+      /* Timeline view tweaks */
+      #viewTimeline .tl-body { padding: .75rem .75rem .5rem; gap: .6rem; }
+      .tl-canvas { min-width: 700px; }
+      .tl-hint   { font-size: .72rem; }
+      .tl-hint span { font-size: .72rem; padding: .35rem .75rem !important; }
+
+      /* Ride cards — 1 column */
+      .rides-grid { grid-template-columns: 1fr; }
+
+      /* Modal full-screen on mobile */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal-card {
+        max-width: 100%; border-radius: 1.25rem 1.25rem 0 0;
+        max-height: 92vh; overflow-y: auto;
+        padding: 1.25rem 1rem 2rem;
+      }
+
+      /* Summary modal full-screen */
+      #summaryModal .modal-card {
+        border-radius: 1.25rem 1.25rem 0 0;
+        max-height: 90vh;
+      }
+
+      /* Admin table scrollable */
+      .admin-table { font-size: .75rem; }
+      .admin-table th, .admin-table td { padding: .6rem .65rem; }
+      .admin-body { padding: 1rem; }
+      .admin-stats { grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+      .stat-val { font-size: 1.8rem; }
+
+      /* Toast above bottom nav */
+      .toast { bottom: 5rem; }
+
+      /* Cons group hover no slide on mobile */
+      .cons-group:hover { transform: none; }
+
+      /* Mobile Quick Time Box */
+      .mob-time-box {
+        display: block; width: 100%;
+        background: rgba(39,39,42,0.4); border: 1px solid rgba(139,92,246,.2);
+        border-radius: 1rem; padding: 1rem; margin-bottom: 1.5rem;
+      }
+    }
+
+    .mob-time-box { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     VIEW 1 — HOME
+═══════════════════════════════════════════════════ -->
+<div class="view" id="viewHome">
+
+  <!-- Header -->
+  <header class="app-header" style="justify-content: flex-end">
+
+    <div class="traffic-section">
+      <span class="traffic-label">🔥 Peak Traffic</span>
+      <div class="traffic-chips">
+        <div class="t-chip" onclick="setActiveDate('2026-05-08')">8 May</div>
+        <div class="t-chip" onclick="setActiveDate('2026-05-09')">9 May</div>
+        <div class="t-chip" onclick="setActiveDate('2026-05-10')">10 May</div>
+        <div class="t-chip" onclick="setActiveDate('2026-05-11')">11 May</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Body: Left + Right -->
+  <div class="home-body">
+
+    <!-- ── LEFT COLUMN ── -->
+    <div class="left-col">
+
+      <!-- Mini hero -->
+      <div class="home-hero fade-in">
+        <h1>Plan Your <span class="gradient-text">Carpool</span></h1>
+        <p>Pick a date, drop your marker, find your group.<br><span style="font-size:0.82rem; opacity:0.75; margin-top:0.25rem; display:block;">see logs below to find co-travellers</span></p>
+      </div>
+
+      <!-- Chat input -->
+      <div class="chat-row slide-up" style="animation-delay:.05s">
+        <div class="chat-bubble">
+          <input id="chatInput" type="text"
+            placeholder='Type "today", "tomorrow", "20 apr"…'
+            onkeydown="if(event.key==='Enter')parseChatDate()"/>
+        </div>
+        <button class="btn-primary" onclick="parseChatDate()" style="flex-shrink:0;padding:.7rem .9rem">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </button>
+      </div>
+
+      <!-- Quick chips -->
+      <div class="quick-chips slide-up" id="quickChips" style="animation-delay:.1s"></div>
+
+      <!-- Custom Calendar -->
+      <div class="glass cal-card slide-up" id="calCard" style="animation-delay:.15s">
+        <div class="cal-nav">
+          <button class="cal-nav-btn" onclick="calNav(-1)">‹</button>
+          <span class="cal-month-label" id="calMonthLabel"></span>
+          <button class="cal-nav-btn" onclick="calNav(1)">›</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+
+    </div><!-- /left-col -->
+
+    <!-- ── RIGHT COLUMN: Traveler Consolidated ── -->
+    <div class="right-col slide-up" style="animation-delay:.18s">
+      <div class="right-col-header">
+        <h2>🧑‍🤝‍🧑 Traveler Groups</h2>
+        <span class="group-count-badge" id="groupCountBadge">0 groups</span>
+      </div>
+      <div class="consolidated-scroll" id="consolidatedScroll">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+    <!-- ── LOG COLUMN: Activity ── -->
+    <div class="log-col slide-up" style="animation-delay:.22s" id="homeLogCol">
+      <div class="log-header">
+        <h2>📜 Activity Log</h2>
+      </div>
+      <div class="log-scroll" id="logScroll">
+        <!-- filled by JS -->
+      </div>
+    </div>
+
+  </div><!-- /home-body -->
+
+  <!-- Mobile bottom tab bar -->
+  <nav class="mob-nav" id="mobNav">
+    <button class="mob-tab active" id="tab-cal" onclick="mobSwitch('cal')">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Calendar
+    </button>
+    <button class="mob-tab" id="tab-groups" onclick="mobSwitch('groups')">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Groups
+    </button>
+    <button class="mob-tab" id="tab-log" onclick="mobSwitch('log')">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Activity
+    </button>
+  </nav>
+
+</div><!-- /viewHome -->
+
+
+<!-- ═══════════════════════════════════════════════════
+     VIEW 2 — TIMELINE
+═══════════════════════════════════════════════════ -->
+<div class="view hidden" id="viewTimeline">
+
+  <!-- Header (no logo icon, back button) -->
+  <header class="app-header">
+    <button class="btn-back" onclick="goHome()">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Back
+    </button>
+    <div class="date-pill" id="tlDatePill">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span id="tlDatePillText"></span>
+    </div>
+    <div class="header-badge" style="opacity:.7">📍 Drop Marker</div>
+  </header>
+
+  <!-- Body -->
+  <div class="tl-body">
+
+    <!-- Timeline centered -->
+    <div class="tl-main">
+      <p class="tl-hint" style="margin-bottom:1.2rem; margin-top:0;">
+        <span style="background:rgba(139,92,246,.25); border:1.5px solid rgba(139,92,246,.6); color:#fff; padding:.4rem 1.2rem; border-radius:.6rem; font-weight:700; letter-spacing:.02em; box-shadow:0 0 20px rgba(139,92,246,.2); animation:pulse-glow 2s infinite;">📍 Click on a time shown below to add your leaving marker</span> &nbsp;·&nbsp; <span onclick="openModalManual()" style="color:var(--p4);cursor:pointer;font-weight:500;">+ Add manually</span>
+      </p>
+
+      <!-- Mobile Quick Select -->
+      <div class="mob-time-box" id="mobTimeBox">
+        <div class="flabel" style="margin-bottom:.6rem;justify-content:center;color:var(--p4)">✨ Intuitive Time Entry</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;">
+          <button class="chip" onclick="openModalManual('08:00')">08:00 AM</button>
+          <button class="chip" onclick="openModalManual('09:00')">09:00 AM</button>
+          <button class="chip" onclick="openModalManual('12:00')">12:00 PM</button>
+          <button class="chip" onclick="openModalManual('13:00')">01:00 PM</button>
+          <button class="chip" onclick="openModalManual('16:00')">04:00 PM</button>
+          <button class="chip" onclick="openModalManual('17:00')">05:00 PM</button>
+          <button class="chip" onclick="openModalManual('18:00')">06:00 PM</button>
+          <button class="chip" onclick="openModalManual('19:00')">07:00 PM</button>
+        </div>
+        <div style="text-align:center;margin-top:.8rem;font-size:.7rem;color:var(--z6)">— or pick any time below —</div>
+      </div>
+
+      <div class="glass tl-glass">
+        <div class="tl-scroll" id="tlScroll">
+          <div class="tl-canvas" id="tlCanvas">
+            <div class="hour-labels" id="tlHourLabels"></div>
+            <div class="tl-track" id="tlTrack" onclick="handleTrackClick(event)">
+              <div class="tl-grad"></div>
+              <div class="tl-ticks" id="tlTicks"></div>
+              <div id="tlMarkers"></div>
+              <div class="now-line" id="nowLine" style="display:none">
+                <div class="now-dot"></div>
+                <div class="now-lbl" id="nowLbl">Now</div>
+              </div>
+            </div>
+            <div class="tl-names" id="tlNames"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rider cards -->
+    <div class="rides-wrap">
+      <div class="rides-hdr">
+        <h3>Riders on this Day</h3>
+        <span class="rides-count-badge" id="ridesCount">0 riders</span>
+      </div>
+      <div class="rides-grid" id="ridesGrid"></div>
+    </div>
+
+  </div><!-- /tl-body -->
+</div><!-- /viewTimeline -->
+
+
+<!-- ═══════════════════════════════════════════════════
+     MODAL — Add Marker
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="markerModal">
+  <div class="glass modal-card">
+    <button class="modal-x" onclick="closeModal()">✕</button>
+    <div class="modal-title">📍 Drop Your Marker</div>
+    <div class="modal-sub" id="modalSub">—</div>
+
+    <div class="time-pill">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="timePillText">—</span>
+    </div>
+
+    <div style="display:flex;gap:.65rem">
+      <div class="fgroup" style="flex:1">
+        <div class="flabel">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Time
+        </div>
+        <input id="mTime" type="time" class="inp" onchange="updateTimePill()"/>
+      </div>
+    </div>
+
+    <div class="fgroup">
+      <div class="flabel"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> Name *</div>
+      <input id="mName" type="text" class="inp" placeholder="e.g. Rahul Sharma" maxlength="40"/>
+    </div>
+    <div class="fgroup">
+      <div class="flabel"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.8a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.9v2.02z"/></svg> Phone *</div>
+      <input id="mPhone" type="tel" class="inp" placeholder="e.g. 98765 43210" maxlength="15"/>
+    </div>
+    <div class="fgroup">
+      <div class="flabel"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Leaving From *</div>
+      <input id="mFrom" type="text" class="inp" placeholder="e.g. VIT CHENNAI" value="VIT CHENNAI" maxlength="60"/>
+    </div>
+    <div class="fgroup">
+      <div class="flabel"><svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg> Drop Location *</div>
+      <input id="mLoc" type="text" class="inp" placeholder="e.g. Chennai Airport, T2" maxlength="60"/>
+      <div style="display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.5rem">
+        <button type="button" class="chip" onclick="document.getElementById('mLoc').value='Chennai Airport (T1/T2)'">✈️ Airport</button>
+        <button type="button" class="chip" onclick="document.getElementById('mLoc').value='Chennai Central'">🚉 Central</button>
+        <button type="button" class="chip" onclick="document.getElementById('mLoc').value='Tambaram'">🚏 Tambaram</button>
+        <button type="button" class="chip" onclick="document.getElementById('mLoc').value='Kelambakkam'">📍 Kelambakkam</button>
+      </div>
+    </div>
+    <div class="fgroup">
+      <div class="flabel">Marker Colour</div>
+      <div class="color-picker" id="colorPicker"></div>
+    </div>
+
+    <div style="display:flex;gap:.65rem;margin-top:1.3rem">
+      <button class="btn-secondary" style="flex:1" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary"   style="flex:1" onclick="submitMarker()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Drop Marker
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL — Marker Summary -->
+<div class="modal-overlay hidden" id="summaryModal">
+  <div class="glass modal-card" style="max-width: 380px;">
+    <button class="modal-x" onclick="closeSummary()">✕</button>
+    <div class="modal-title" id="sName" style="margin-right: 30px;">—</div>
+    <div class="modal-sub">Rider Details</div>
+
+    <div class="time-pill" style="justify-content: center; font-size: 1.2rem; padding: .75rem;">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="sTime">—</span>
+    </div>
+
+    <div class="fgroup" style="padding: 0 .5rem;">
+      <div class="flabel" style="color: var(--p5);">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 0113.19 18.9a19.5 19.5 0 01-5.1-5.1 19.79 19.79 0 01-3.07-8.63A2 2 0 017 3h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L11.09 10.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 17.92z"/></svg> 
+        Phone
+      </div>
+      <div id="sPhone" style="font-size: 1rem; font-weight: 600; padding: .5rem 0;">
+        <button class="btn-secondary" onclick="revealPhone()" style="padding:.2rem .6rem">Show Contact</button>
+      </div>
+    </div>
+
+    <div class="fgroup" style="padding: 0 .5rem;">
+      <div class="flabel" style="color: var(--p5);">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Leaving From
+      </div>
+      <div id="sFrom" style="font-size: .9rem; line-height: 1.4; padding: .5rem 0;">—</div>
+    </div>
+    <div class="fgroup" style="padding: 0 .5rem;">
+      <div class="flabel" style="color: var(--p5);">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        Drop Location
+      </div>
+      <div id="sLoc" style="font-size: .9rem; line-height: 1.4; padding: .5rem 0;">—</div>
+    </div>
+
+    <div style="display:flex;gap:.65rem;margin-top:1.5rem">
+      <button class="btn-secondary" style="flex:1" onclick="closeSummary()">Close</button>
+      <button class="btn-secondary" id="sDelBtn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
+        Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- AUTH GATE -->
+<div id="adminAuthGate" style="display:none">
+  <div class="auth-card">
+    <span class="auth-lock">🔐</span>
+    <div class="auth-title gradient-text">Admin Access</div>
+    <div class="auth-sub">Enter the admin password to continue</div>
+    <input id="authInput" type="password" class="inp"
+      placeholder="Password"
+      style="text-align:center;font-size:1.05rem;letter-spacing:.12em;margin-bottom:.4rem"
+      onkeydown="if(event.key==='Enter')checkAdminAuth()"/>
+    <div class="auth-err" id="authErr"></div>
+    <button class="btn-primary" style="width:100%;margin-top:1rem" onclick="checkAdminAuth()">Unlock Dashboard</button>
+  </div>
+</div>
+
+<!-- VIEW 3 — ADMIN -->
+<div class="view" id="viewAdmin">
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon" style="background:linear-gradient(135deg,#ef4444,#7f1d1d)">🛡️</div>
+      <span>Admin Dashboard</span>
+    </div>
+    <div style="display:flex;gap:.6rem;align-items:center">
+      <span style="font-size:.72rem;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);color:#10b981;padding:.28rem .75rem;border-radius:9999px">● Live</span>
+      <button class="btn-secondary" style="font-size:.75rem;padding:.4rem .8rem" onclick="refreshAdmin()">🔄 Refresh</button>
+      <button class="btn-back" onclick="location.hash=''">⬅ Home</button>
+    </div>
+  </header>
+  <div class="admin-body slide-up">
+    <!-- Stats -->
+    <div class="admin-stats" id="adminStats"></div>
+    <!-- Day Heatmap -->
+    <div class="admin-section glass" style="padding:1.25rem 1.5rem;margin-bottom:1.5rem">
+      <div class="admin-section-hdr">
+        <h2>📊 Activity by Day</h2>
+        <span class="badge" id="heatmapBadge">0 days</span>
+      </div>
+      <div class="day-bar-wrap" id="dayHeatmap"></div>
+    </div>
+    <!-- Registry Table -->
+    <div class="admin-section">
+      <div class="admin-section-hdr">
+        <h2>📋 Full Rider Registry</h2>
+        <span class="badge" id="registryBadge">0 riders</span>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead><tr>
+            <th>#</th><th>Date</th><th>Name</th><th>Time</th><th>📞 Phone</th><th>📍 Location</th><th>Color</th><th>Action</th>
+          </tr></thead>
+          <tbody id="adminTableContent"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg">Done</span>
+</div>
+
+<script>
+/* ──────────────────────────────────────────────────
+   CONSTANTS & STATE
+────────────────────────────────────────────────── */
+const COLORS = ['#8b5cf6','#a855f7','#3b82f6','#06b6d4','#10b981',
+                '#f59e0b','#f97316','#ef4444','#ec4899','#84cc16'];
+
+let activeDate   = null;   // "YYYY-MM-DD"
+let pendingFrac  = null;
+let mkIdSeed     = 1000;
+let selColor     = '#8b5cf6';
+let calYear, calMonth;     // calendar display month
+
+
+/* ──────────────────────────────────────────────────
+   STORAGE — R2-backed via Cloudflare Worker API
+   Falls back to localStorage in local dev (no /api)
+────────────────────────────────────────────────── */
+const IS_CF = location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+const API   = '/api/markers';
+
+// In-memory cache so reads are instant after first load
+const _cache = {};
+
+async function fetchAllFromR2() {
+  if (!IS_CF) return; // local: rely on localStorage
+  try {
+    const res = await fetch(API);
+    if (!res.ok) return;
+    const data = await res.json(); // { "YYYY-MM-DD": [...], ... }
+    Object.assign(_cache, data);
+  } catch(e) { console.warn('R2 fetch failed, using localStorage', e); }
+}
+
+function loadMk(d) {
+  if (IS_CF) return _cache[d] || [];
+  try { return JSON.parse(localStorage.getItem(`cs_mk_${d}`)) || []; } catch { return []; }
+}
+
+async function saveMkToR2(d, mk) {
+  // Optimistic local update
+  if (!_cache[d]) _cache[d] = [];
+  _cache[d].push(mk);
+  if (!IS_CF) {
+    localStorage.setItem(`cs_mk_${d}`, JSON.stringify(_cache[d]));
+    return;
+  }
+  try {
+    await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date: d, marker: mk })
+    });
+  } catch(e) { console.warn('R2 save failed', e); }
+}
+
+async function deleteMkFromR2(id) {
+  // Find and remove from cache
+  for (const d of Object.keys(_cache)) {
+    const idx = _cache[d].findIndex(m => m.id === id);
+    if (idx !== -1) {
+      _cache[d].splice(idx, 1);
+      if (_cache[d].length === 0) delete _cache[d];
+      if (!IS_CF) {
+        const remaining = _cache[d];
+        if (remaining && remaining.length) localStorage.setItem(`cs_mk_${d}`, JSON.stringify(remaining));
+        else localStorage.removeItem(`cs_mk_${d}`);
+      } else {
+        try {
+          await fetch(`${API}/${id}`, { method: 'DELETE' });
+        } catch(e) { console.warn('R2 delete failed', e); }
+      }
+      return;
+    }
+  }
+  // fallback scan localStorage
+  if (!IS_CF) {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('cs_mk_')) {
+        const arr = JSON.parse(localStorage.getItem(k)) || [];
+        if (arr.some(m => m.id === id)) {
+          const updated = arr.filter(m => m.id !== id);
+          if (updated.length) localStorage.setItem(k, JSON.stringify(updated));
+          else localStorage.removeItem(k);
+          break;
+        }
+      }
+    }
+  }
+}
+
+function allDatesWithMk() {
+  if (IS_CF) return Object.keys(_cache).filter(d => (_cache[d]||[]).length > 0).sort();
+  const dates = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('cs_mk_')) dates.push(k.replace('cs_mk_',''));
+  }
+  return dates.filter(d => loadMk(d).length > 0).sort();
+}
+
+// Legacy saveMk used by deleteMk
+function saveMk(d, a) {
+  _cache[d] = a;
+  if (!IS_CF) localStorage.setItem(`cs_mk_${d}`, JSON.stringify(a));
+}
+const sk = d => `cs_mk_${d}`;
+
+
+
+/* ──────────────────────────────────────────────────
+   DATE HELPERS
+────────────────────────────────────────────────── */
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function isoToDate(s) { return new Date(s + 'T00:00:00'); }
+function niceDate(iso) {
+  return isoToDate(iso).toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+function niceDateShort(iso) {
+  return isoToDate(iso).toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+}
+function parseNatural(raw) {
+  const s = raw.trim().toLowerCase();
+  const today = new Date();
+  if (['today','aaj','now'].includes(s)) return todayISO();
+  if (['tomorrow','kal','tmr','tmrw'].includes(s)) {
+    today.setDate(today.getDate()+1); return dateToISO(today);
+  }
+  if (s === 'yesterday') { today.setDate(today.getDate()-1); return dateToISO(today); }
+  const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  const dm = s.match(/^(\d{1,2})\s+([a-z]+)(?:\s+(\d{4}))?$/);
+  if (dm) {
+    const mi = months.findIndex(m => dm[2].startsWith(m));
+    if (mi !== -1) {
+      const yr = dm[3] ? +dm[3] : today.getFullYear();
+      const d  = new Date(yr, mi, +dm[1]);
+      if (!isNaN(d)) return dateToISO(d);
+    }
+  }
+  const d = new Date(s);
+  if (!isNaN(d)) return dateToISO(d);
+  return null;
+}
+function dateToISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function timeStr(h, m) {
+  const ap = h >= 12 ? 'PM' : 'AM';
+  return `${(h%12)||12}:${String(m).padStart(2,'0')} ${ap}`;
+}
+function fracFromTime(t) {
+  const [h,m] = t.split(':').map(Number);
+  return (h*60+m)/(24*60);
+}
+
+
+/* ──────────────────────────────────────────────────
+   ADMIN AUTH  (password validated server-side)
+────────────────────────────────────────────────── */
+let adminUnlocked = false;
+
+async function checkAdminAuth() {
+  const val = document.getElementById('authInput').value;
+  // Validate against a server-side env variable so the password
+  // is NEVER exposed in client-side source code.
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pass: val }),
+    });
+    if (res.ok && (await res.json()).ok) {
+      adminUnlocked = true;
+      document.getElementById('adminAuthGate').style.display = 'none';
+      renderAdmin();
+      return;
+    }
+  } catch {
+    // /api/auth not available (local dev) — fallback to env-var-style prompt
+    // This block only runs on localhost; on CF the server always responds.
+  }
+  const err = document.getElementById('authErr');
+  err.textContent = 'Incorrect password. Try again.';
+  document.getElementById('authInput').value = '';
+  document.getElementById('authInput').focus();
+  setTimeout(() => err.textContent = '', 2500);
+}
+
+/* ──────────────────────────────────────────────────
+   ROUTING & VIEW SWITCHING
+────────────────────────────────────────────────── */
+function checkRoute() {
+  const hash = window.location.hash;
+  document.getElementById('viewHome').classList.toggle('hidden', hash !== '');
+  document.getElementById('viewTimeline').classList.toggle('hidden', hash !== '#timeline');
+  const adminView = document.getElementById('viewAdmin');
+  adminView.classList.toggle('active', hash === '#admin');
+
+  if (hash === '#admin') {
+    if (!adminUnlocked) {
+      document.getElementById('adminAuthGate').style.display = 'flex';
+      document.getElementById('authInput').focus();
+    } else {
+      renderAdmin();
+    }
+  } else {
+    document.getElementById('adminAuthGate').style.display = 'none';
+    if (hash === '#timeline') {
+      if (!activeDate) { window.location.hash = ''; return; }
+      document.getElementById('tlDatePillText').textContent = niceDateShort(activeDate);
+      buildTimeline();
+      renderRides();
+      updateNowLine();
+      scrollPeek();
+    } else {
+      renderConsolidated();
+      renderCalendar();
+    }
+  }
+}
+window.onhashchange = checkRoute;
+
+function goTimeline() { window.location.hash = 'timeline'; }
+function goHome() { window.location.hash = ''; }
+
+function scrollPeek() {
+  const el = document.getElementById('tlScroll');
+  if (!el) return;
+  // Use a slight delay to ensure render is complete
+  setTimeout(() => {
+    el.scrollTo({ left: 100, behavior: 'smooth' });
+    setTimeout(() => {
+      el.scrollTo({ left: 0, behavior: 'smooth' });
+    }, 600);
+  }, 300);
+}
+
+
+
+/* ──────────────────────────────────────────────────
+   DATE SELECTION
+────────────────────────────────────────────────── */
+function setActiveDate(iso) {
+  activeDate = iso;
+  // Update calendar
+  const d = isoToDate(iso);
+  if (calYear !== d.getFullYear() || calMonth !== d.getMonth()) {
+    calYear = d.getFullYear(); calMonth = d.getMonth();
+    renderCalendar();
+  } else {
+    renderCalendar();
+  }
+  // Mark chip active
+  document.querySelectorAll('.chip[data-iso]').forEach(c =>
+    c.classList.toggle('active', c.dataset.iso === iso));
+  renderConsolidated();
+  
+  // Auto-open timeline
+  setTimeout(goTimeline, 100);
+}
+
+function parseChatDate() {
+  const raw = document.getElementById('chatInput').value;
+  if (!raw.trim()) return;
+  const iso = parseNatural(raw);
+  if (iso) {
+    setActiveDate(iso);
+    showToast('📅', `Date set: ${niceDateShort(iso)}`);
+    document.getElementById('chatInput').value = '';
+  } else {
+    showToast('❌', 'Could not parse date. Try "today" or "20 apr"');
+  }
+}
+
+/* Quick chips */
+function buildChips() {
+  const wrap = document.getElementById('quickChips');
+  const today = new Date();
+  const chips = [];
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(today); d.setDate(today.getDate()+i);
+    const iso = dateToISO(d);
+    const lbl = i===0?'Today':i===1?'Tomorrow':d.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'});
+    chips.push(`<button class="chip" data-iso="${iso}" onclick="setActiveDate('${iso}');showToast('📅','${lbl} selected')">${lbl}</button>`);
+  }
+  wrap.innerHTML = chips.join('');
+}
+
+
+/* ──────────────────────────────────────────────────
+   CUSTOM CALENDAR
+────────────────────────────────────────────────── */
+function renderCalendar() {
+  const label = document.getElementById('calMonthLabel');
+  const grid  = document.getElementById('calGrid');
+  const today = todayISO();
+  const datesWithMk = new Set(allDatesWithMk());
+
+  label.textContent = new Date(calYear, calMonth, 1)
+    .toLocaleDateString('en-IN', { month:'long', year:'numeric' });
+
+  // Days of week headers
+  const dows = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  const weekendIdx = new Set([0,6]);
+  let html = dows.map((d,i) =>
+    `<div class="cal-dow ${weekendIdx.has(i)?'weekend':''}">${d}</div>`
+  ).join('');
+
+  // First day of month
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+  const prevDays = new Date(calYear, calMonth, 0).getDate();
+
+  // Prev month fill
+  for (let i = firstDay-1; i >= 0; i--) {
+    html += `<div class="cal-cell other-month">${prevDays-i}</div>`;
+  }
+
+  // Current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday    = iso === today;
+    const isPast     = iso < today;
+    const isSelected = iso === activeDate;
+    const hasMk      = datesWithMk.has(iso);
+    const cls = [
+      'cal-cell',
+      isToday    ? 'today-cell'  : '',
+      isPast     ? 'past'        : '',
+      isSelected ? 'selected'    : '',
+      hasMk      ? 'has-markers' : '',
+    ].filter(Boolean).join(' ');
+    const clickFn = isPast ? '' : `onclick="setActiveDate('${iso}')"`;
+    html += `<div class="${cls}" ${clickFn} style="animation-delay:${d*0.01}s">${d}</div>`;
+  }
+
+  // Next month fill (complete last row)
+  const total = firstDay + daysInMonth;
+  const remaining = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let i = 1; i <= remaining; i++) {
+    html += `<div class="cal-cell other-month">${i}</div>`;
+  }
+
+  grid.innerHTML = html;
+}
+function calNav(delta) {
+  calMonth += delta;
+  if (calMonth < 0)  { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0;  calYear++; }
+  renderCalendar();
+}
+
+
+/* ──────────────────────────────────────────────────
+   TRAVELER CONSOLIDATED (Right Panel)
+────────────────────────────────────────────────── */
+function renderConsolidated() {
+  const scroll = document.getElementById('consolidatedScroll');
+  const badge  = document.getElementById('groupCountBadge');
+  const dates  = allDatesWithMk();
+
+  if (!dates.length) {
+    scroll.innerHTML = `<div class="cons-empty">
+      <div class="cons-empty-icon">🚗</div>
+      <p>No travelers yet.<br>Add markers and groups will appear here automatically.</p>
+    </div>`;
+    badge.textContent = '0 groups';
+    return;
+  }
+
+  let totalGroups = 0;
+  let html = '';
+  const today = todayISO();
+
+  // Show upcoming + today dates first, then past
+  const sorted = [...dates].sort((a,b) => {
+    const fa = a >= today ? 0 : 1, fb = b >= today ? 0 : 1;
+    return fa - fb || a.localeCompare(b);
+  });
+
+  sorted.forEach(date => {
+    const markers = loadMk(date).sort((a,b) => a.frac - b.frac);
+    if (!markers.length) return;
+
+    // Group into clusters: ±1 hour (frac ±1/24) AND same location
+    const WINDOW = 1/24; // 1 hour in fraction
+    const visited = new Set();
+    const groups  = [];
+    markers.forEach((mk, i) => {
+      if (visited.has(mk.id)) return;
+      const group = [mk];
+      visited.add(mk.id);
+      markers.forEach((mk2, j) => {
+        if (i===j || visited.has(mk2.id)) return;
+        const sameLoc = mk2.location.trim().toLowerCase() === mk.location.trim().toLowerCase();
+        if (Math.abs(mk2.frac - mk.frac) <= WINDOW && sameLoc) {
+          group.push(mk2); visited.add(mk2.id);
+        }
+      });
+      if (group.length >= 2) groups.push(group);
+    });
+
+    if (!groups.length) return;
+    totalGroups += groups.length;
+
+    const isToday = date === today;
+    const dateLabel = isToday ? 'Today · ' + niceDateShort(date) : niceDateShort(date);
+
+    html += `<div class="cons-date-group">
+      <div class="cons-date-label">${isToday?'🔴 ':''}${escHtml(dateLabel)}</div>`;
+
+    groups.forEach(group => {
+      const minFrac = Math.min(...group.map(m=>m.frac));
+      const maxFrac = Math.max(...group.map(m=>m.frac));
+      const minMins = Math.round(minFrac*24*60);
+      const maxMins = Math.round(maxFrac*24*60);
+      const fromT = timeStr(Math.floor(minMins/60), minMins%60);
+      const toT   = timeStr(Math.floor(maxMins/60), maxMins%60);
+      const windowStr = minMins===maxMins ? fromT : `${fromT} – ${toT}`;
+
+      html += `<div class="cons-group" onclick="setActiveDate('${date}')">
+        <div class="cons-group-glow"></div>
+        <div class="cons-group-time">
+          <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          ${escHtml(windowStr)}
+        </div>
+        <div class="cons-riders">`;
+
+      group.forEach(mk => {
+        html += `<div class="cons-rider">
+          <div class="cons-rider-dot" style="background:${mk.color}"></div>
+          <div>
+            <span class="cons-rider-meta">📍${escHtml(mk.location)}</span>
+          </div>
+        </div>`;
+      });
+
+      html += `</div>
+        <div class="cons-match-badge">
+          <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          ${group.length} riders can carpool
+        </div>
+      </div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  if (!totalGroups) {
+    scroll.innerHTML = `<div class="cons-empty">
+      <div class="cons-empty-icon">🕐</div>
+      <p>No overlapping travelers yet.<br>Groups appear when 2+ people have the <b>same drop location</b> within ±1 hour on the same day.</p>
+    </div>`;
+  } else {
+    scroll.innerHTML = html;
+  }
+  badge.textContent = `${totalGroups} group${totalGroups!==1?'s':''}`;
+  renderLog();
+}
+
+function renderLog() {
+  const scroll = document.getElementById('logScroll');
+  const allDates = allDatesWithMk();
+  const allMks = [];
+  allDates.forEach(d => {
+    loadMk(d).forEach(m => allMks.push({ ...m, date: d }));
+  });
+  // Sort by id descending (chronological by creation)
+  allMks.sort((a,b) => b.id - a.id);
+
+  if (!allMks.length) {
+    scroll.innerHTML = '<div style="color:var(--z6);font-size:.8rem;padding:1rem;text-align:center">No activity yet</div>';
+    return;
+  }
+
+  scroll.innerHTML = allMks.slice(0, 30).map(mk => `
+    <div class="log-item fade-in">
+      <div class="log-date">${niceDateShort(mk.date)}</div>
+      <div class="log-loc">📍 ${escHtml(mk.location)}</div>
+    </div>
+  `).join('');
+}
+
+
+/* ──────────────────────────────────────────────────
+   TIMELINE BUILD
+────────────────────────────────────────────────── */
+function buildTimeline() {
+  // Hour labels — clickable
+  const labelsEl = document.getElementById('tlHourLabels');
+  let labHtml = '';
+  for (let h = 0; h <= 24; h++) {
+    const pct = (h/24)*100;
+    const lbl = h===0?'12am':h===12?'12pm':h===24?'+1':h<12?`${h}am`:`${h-12}pm`;
+    const hl  = h%6===0;
+    // Only make whole integer hours (0-23) clickable; +1 label is decorative
+    const clickable = h < 24;
+    const onclick   = clickable ? `onclick="clickHour(${h})"` : '';
+    labHtml += `<span class="hour-lbl ${hl?'hl':''}" style="left:${pct}%" ${onclick} title="${clickable?'Add marker at '+lbl:''}">${lbl}</span>`;
+  }
+  labelsEl.innerHTML = labHtml;
+
+  // Ticks
+  const ticksEl = document.getElementById('tlTicks');
+  let tickHtml = '';
+  for (let h = 1; h < 24; h++) {
+    const pct = (h/24)*100;
+    const cls = h%6===0?'major':h%3===0?'half':'minor';
+    tickHtml += `<div class="tick ${cls}" style="left:${pct}%"></div>`;
+  }
+  ticksEl.innerHTML = tickHtml;
+
+  renderMarkers();
+}
+
+/* Click an hour label → open modal pre-filled at that hour */
+function clickHour(h) {
+  pendingFrac = h / 24;
+  const hStr = String(h).padStart(2,'0');
+  document.getElementById('mTime').value = `${hStr}:00`;
+  updateTimePill();
+  openModal();
+}
+
+/* ──────────────────────────────────────────────────
+   NOW LINE
+────────────────────────────────────────────────── */
+function updateNowLine() {
+  const nl = document.getElementById('nowLine');
+  if (activeDate !== todayISO()) { nl.style.display='none'; return; }
+  const now  = new Date();
+  const frac = (now.getHours()*60+now.getMinutes())/(24*60);
+  nl.style.display = '';
+  nl.style.left    = `${frac*100}%`;
+  document.getElementById('nowLbl').textContent =
+    now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
+  setTimeout(updateNowLine, 60000);
+}
+
+
+/* ──────────────────────────────────────────────────
+   TRACK CLICK
+────────────────────────────────────────────────── */
+function handleTrackClick(e) {
+  const track = document.getElementById('tlTrack');
+  const rect  = track.getBoundingClientRect();
+  const frac  = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+  pendingFrac = frac;
+  const mins  = Math.round(frac*24*60);
+  const h = Math.floor(mins/60)%24, m = mins%60;
+  document.getElementById('mTime').value = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  updateTimePill();
+  openModal();
+}
+function openModalManual(tStr) {
+  if (tStr) {
+    const [h,m] = tStr.split(':').map(Number);
+    pendingFrac = (h*60+m)/(24*60);
+    document.getElementById('mTime').value = tStr;
+    updateTimePill();
+  } else {
+    pendingFrac = null;
+    document.getElementById('mTime').value = '';
+    document.getElementById('timePillText').textContent = 'Pick a time below';
+  }
+  openModal();
+}
+function openModal() {
+  document.body.classList.add('modal-open');
+  // Random color each open
+  selColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+  buildColorPicker();
+  document.getElementById('modalSub').textContent = activeDate ? `Leaving on ${niceDate(activeDate)}` : '—';
+  document.getElementById('markerModal').classList.remove('hidden');
+}
+function closeModal() {
+  document.body.classList.remove('modal-open');
+  document.getElementById('markerModal').classList.add('hidden');
+  ['mName','mPhone','mLoc'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('mFrom').value = 'VIT CHENNAI';
+}
+function updateTimePill() {
+  const t = document.getElementById('mTime').value;
+  if (!t) { document.getElementById('timePillText').textContent='—'; return; }
+  const [h,m] = t.split(':').map(Number);
+  document.getElementById('timePillText').textContent = timeStr(h,m);
+}
+
+
+/* ──────────────────────────────────────────────────
+   SUBMIT MARKER
+────────────────────────────────────────────────── */
+function submitMarker() {
+  const name  = document.getElementById('mName').value.trim();
+  const phone = document.getElementById('mPhone').value.trim();
+  const from  = document.getElementById('mFrom').value.trim();
+  const loc   = document.getElementById('mLoc').value.trim();
+  const t     = document.getElementById('mTime').value;
+  if (!name)  { hilite('mName');  showToast('⚠️','Name required');     return; }
+  if (!phone) { hilite('mPhone'); showToast('⚠️','Phone required');    return; }
+  if (!from)  { hilite('mFrom');  showToast('⚠️','Leaving point required'); return; }
+  if (!loc)   { hilite('mLoc');   showToast('⚠️','Drop location required'); return; }
+  if (!t)     { hilite('mTime');  showToast('⚠️','Time required');     return; }
+
+  const [h,m] = t.split(':').map(Number);
+  const frac  = pendingFrac !== null ? pendingFrac : (h*60+m)/(24*60);
+  const mk    = { id:++mkIdSeed, name, phone, from, location:loc, time:t, frac, color:selColor, ts:Date.now() };
+
+  saveMkToR2(activeDate, mk).then(() => {
+    closeModal();
+    renderMarkers();
+    renderRides();
+    renderConsolidated();
+    renderCalendar();
+    showToast('📍', `${name} added at ${timeStr(h,m)}`);
+  });
+}
+
+
+/* ──────────────────────────────────────────────────
+   RENDER MARKERS ON TRACK
+────────────────────────────────────────────────── */
+function renderMarkers() {
+  const cont = document.getElementById('tlMarkers');
+  const names = document.getElementById('tlNames');
+  const markers = loadMk(activeDate);
+  cont.innerHTML = ''; names.innerHTML = '';
+
+  markers.forEach(mk => {
+    const [h,m] = mk.time.split(':').map(Number);
+    const ts = timeStr(h,m);
+    const el = document.createElement('div');
+    el.className = 'marker';
+    el.style.left = `${mk.frac*100}%`;
+    el.onclick = (e) => { e.stopPropagation(); viewMarker(mk.id); };
+    el.innerHTML = `
+      <div class="marker-pin" style="background:${mk.color}"></div>
+      <div class="marker-tooltip">
+        <div class="tt-time">${ts}</div>
+        <div class="tt-name">${escHtml(mk.name)}</div>
+        <div class="tt-row"><span>📍</span>${escHtml(mk.location)}</div>
+        <div class="tt-row" style="margin-top:.3rem">
+          <button class="tt-phone-btn" onclick="event.stopPropagation();this.textContent=this.dataset.ph;this.style.color='var(--p3)';this.style.borderStyle='solid'" data-ph="${escHtml(mk.phone)}">📞 Tap to show number</button>
+        </div>
+      </div>
+      <div class="marker-label">${escHtml(mk.name.split(' ')[0])}</div>`;
+    cont.appendChild(el);
+  });
+}
+
+function viewMarker(id) {
+  const mk = loadMk(activeDate).find(m => m.id === id);
+  if (!mk) return;
+  const [h, m] = mk.time.split(':').map(Number);
+  document.getElementById('sName').textContent = mk.name;
+  document.getElementById('sTime').textContent = timeStr(h, m);
+  const phEl = document.getElementById('sPhone');
+  phEl.innerHTML = `<button class="btn-secondary" style="padding:.25rem .75rem;font-size:.8rem" onclick="this.outerHTML='<span class=ph-revealed>${escHtml(mk.phone)}</span>'">📞 Click to reveal number</button>`;
+  const fromEl = document.getElementById('sFrom');
+  if (fromEl) fromEl.textContent = mk.from || 'VIT CHENNAI';
+  document.getElementById('sLoc').textContent = mk.location;
+  document.getElementById('sDelBtn').onclick = () => { deleteMk(mk.id); closeSummary(); };
+  document.body.classList.add('modal-open');
+  document.getElementById('summaryModal').classList.remove('hidden');
+}
+
+function closeSummary() {
+  document.body.classList.remove('modal-open');
+  document.getElementById('summaryModal').classList.add('hidden');
+}
+
+
+/* ──────────────────────────────────────────────────
+   RENDER RIDE CARDS
+────────────────────────────────────────────────── */
+function renderRides() {
+  const grid = document.getElementById('ridesGrid');
+  const mkrs = loadMk(activeDate).sort((a,b)=>a.frac-b.frac);
+  document.getElementById('ridesCount').textContent = `${mkrs.length} rider${mkrs.length!==1?'s':''}`;
+
+  if (!mkrs.length) {
+    grid.innerHTML = `<div class="empty-rides">
+      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+      No riders yet — click the timeline to add your marker!
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = mkrs.map(mk => {
+    const [h,m] = mk.time.split(':').map(Number);
+    const ts = timeStr(h,m);
+    return `<div class="ride-card slide-up" onclick="viewMarker(${mk.id})" style="cursor:pointer">
+      <div class="ride-accent" style="background:${mk.color}"></div>
+      <div class="ride-inner">
+        <div class="ride-name">${escHtml(mk.name)}</div>
+        <div class="ride-time" style="color:${mk.color}">${ts}</div>
+        <div class="ride-meta">
+          <div class="ride-meta-r">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            ⤵ ${escHtml(mk.location)}
+          </div>
+        </div>
+      </div>
+      <button class="del-btn" onclick="event.stopPropagation();deleteMk(${mk.id})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteMk(id) {
+  deleteMkFromR2(id).then(() => {
+    if (window.location.hash === '#admin') renderAdmin();
+    else { renderMarkers(); renderRides(); renderConsolidated(); renderCalendar(); }
+    showToast('🗑️','Marker removed');
+  });
+}
+
+
+/* ──────────────────────────────────────────────────
+   COLOR PICKER
+────────────────────────────────────────────────── */
+function buildColorPicker() {
+  document.getElementById('colorPicker').innerHTML = COLORS.map(c =>
+    `<div class="swatch ${c===selColor?'sel':''}" style="background:${c}"
+      onclick="selColor='${c}';document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('sel',s.style.background===selColor||s.style.backgroundColor===selColor))"></div>`
+  ).join('');
+}
+
+
+/* ──────────────────────────────────────────────────
+   TOAST
+────────────────────────────────────────────────── */
+let _tt;
+function showToast(icon, msg) {
+  document.getElementById('toastIcon').textContent = icon;
+  document.getElementById('toastMsg').textContent  = msg;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  clearTimeout(_tt);
+  _tt = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+
+/* Hilite invalid field */
+function hilite(id) {
+  const el = document.getElementById(id);
+  el.style.borderColor = '#ef4444';
+  el.focus();
+  setTimeout(()=>el.style.borderColor='', 900);
+}
+
+/* ──────────────────────────────────────────────────
+   ADMIN DASHBOARD LOGIC
+────────────────────────────────────────────────── */
+function renderAdmin() {
+  const allDates = allDatesWithMk();
+  let totalRiders = 0;
+  let allMarkers = [];
+  allDates.forEach(date => {
+    const list = loadMk(date);
+    totalRiders += list.length;
+    list.forEach(m => allMarkers.push({ ...m, date }));
+  });
+  const activeDays = allDates.length;
+  const sorted = [...allDates].sort((a,b) => loadMk(b).length - loadMk(a).length);
+  const peakDay = sorted[0] || null;
+  const peakCount = peakDay ? loadMk(peakDay).length : 0;
+  // Avg riders per day
+  const avg = activeDays ? (totalRiders / activeDays).toFixed(1) : 0;
+
+  document.getElementById('adminStats').innerHTML = `
+    <div class="stat-card fade-in" style="animation-delay:0s">
+      <span class="stat-icon">🧑‍🤝‍🧑</span>
+      <div class="stat-val">${totalRiders}</div>
+      <div class="stat-lbl">Total Riders</div>
+      <div class="stat-sub">${avg} avg per day</div>
+    </div>
+    <div class="stat-card fade-in" style="animation-delay:.08s">
+      <span class="stat-icon">📅</span>
+      <div class="stat-val">${activeDays}</div>
+      <div class="stat-lbl">Active Days</div>
+    </div>
+    <div class="stat-card fade-in" style="animation-delay:.16s">
+      <span class="stat-icon">🔥</span>
+      <div class="stat-val" style="font-size:${peakDay?'1.25rem':'2rem'}">${peakDay ? niceDateShort(peakDay) : '—'}</div>
+      <div class="stat-lbl">Peak Day</div>
+      <div class="stat-sub">${peakDay ? peakCount + ' riders' : 'No data yet'}</div>
+    </div>
+    <div class="stat-card fade-in" style="animation-delay:.24s">
+      <span class="stat-icon">⏰</span>
+      <div class="stat-val" style="font-size:1.3rem">${getMostCommonHour(allMarkers)}</div>
+      <div class="stat-lbl">Peak Hour</div>
+    </div>
+  `;
+
+  // Heatmap
+  const heatmap = document.getElementById('dayHeatmap');
+  document.getElementById('heatmapBadge').textContent = activeDays + ' days';
+  if (!activeDays) {
+    heatmap.innerHTML = '<div style="color:var(--z6);font-size:.85rem;padding:.5rem">No data yet.</div>';
+  } else {
+    const maxCount = Math.max(...allDates.map(d => loadMk(d).length));
+    heatmap.innerHTML = [...allDates].sort().map(d => {
+      const cnt = loadMk(d).length;
+      const pct = maxCount > 0 ? (cnt / maxCount * 100) : 0;
+      return `<div class="day-bar-row">
+        <div class="day-bar-label" title="${d}">${niceDateShort(d)}</div>
+        <div class="day-bar-track" onclick="setActiveDate('${d}');location.hash='timeline'" title="View ${cnt} riders">
+          <div class="day-bar-fill" style="width:${pct}%"></div>
+        </div>
+        <div class="day-bar-count">${cnt}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Table
+  allMarkers.sort((a,b) => a.date.localeCompare(b.date) || a.frac - b.frac);
+  document.getElementById('registryBadge').textContent = totalRiders + ' riders';
+  const table = document.getElementById('adminTableContent');
+  if (!allMarkers.length) {
+    table.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:4rem;color:var(--z6)">Registry is empty.</td></tr>`;
+    return;
+  }
+  table.innerHTML = allMarkers.map((m, i) => `
+    <tr>
+      <td style="color:var(--z6);font-size:.75rem">${i+1}</td>
+      <td><span class="admin-badge">${niceDateShort(m.date)}</span></td>
+      <td style="font-weight:700">${escHtml(m.name)}</td>
+      <td style="color:var(--p4);font-weight:700">${timeStr(...m.time.split(':').map(Number))}</td>
+      <td><button class="ph-hidden" onclick="this.outerHTML='<span class=ph-revealed>${escHtml(m.phone)}</span>'">🔒 Show</button></td>
+      <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(m.location)}">📍 ${escHtml(m.location)}</td>
+      <td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${m.color};border:2px solid rgba(255,255,255,.25)"></span></td>
+      <td>
+        <button class="btn-icon-del" onclick="if(confirm('Delete ${escHtml(m.name)}?'))deleteMk(${m.id})" title="Delete">
+          <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function getMostCommonHour(markers) {
+  if (!markers.length) return '—';
+  const counts = {};
+  markers.forEach(m => {
+    const h = parseInt(m.time.split(':')[0]);
+    counts[h] = (counts[h] || 0) + 1;
+  });
+  const peak = Object.entries(counts).sort((a,b) => b[1]-a[1])[0];
+  if (!peak) return '—';
+  const h = parseInt(peak[0]);
+  return timeStr(h, 0).replace(':00','');
+}
+
+function refreshAdmin() {
+  renderAdmin();
+  showToast('🔄', 'Data refreshed');
+}
+
+
+
+/* XSS escape */
+const escHtml = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+
+/* ──────────────────────────────────────────────────
+   INIT
+────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+
+  buildChips();
+  buildColorPicker();
+
+  // Fetch all data from R2 (no-op on localhost)
+  await fetchAllFromR2();
+
+  renderCalendar();
+  renderConsolidated();
+  checkRoute();
+  initMobile();
+});
+
+/* Only summaryModal closes on outside click — markerModal requires ✕ button */
+document.getElementById('summaryModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('summaryModal')) closeSummary();
+});
+
+/* ──────────────────────────────────────────────────
+   MOBILE TAB SWITCHING
+────────────────────────────────────────────────── */
+const MOB_PANELS = {
+  cal:    document.querySelector('.left-col'),
+  groups: document.querySelector('.right-col'),
+  log:    document.querySelector('.log-col'),
+};
+
+function mobSwitch(tab) {
+  if (window.innerWidth > 768) return; // desktop: do nothing
+  // Toggle panels
+  Object.entries(MOB_PANELS).forEach(([key, el]) => {
+    if (el) el.classList.toggle('mob-panel-active', key === tab);
+  });
+  // Toggle tab active state
+  ['cal','groups','log'].forEach(t => {
+    const btn = document.getElementById('tab-' + t);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+}
+
+function initMobile() {
+  if (window.innerWidth <= 768) {
+    mobSwitch('cal'); // show calendar first on mobile
+  }
+}
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 768) {
+    // restore all panels on desktop
+    Object.values(MOB_PANELS).forEach(el => {
+      if (el) el.classList.remove('mob-panel-active');
+    });
+  } else {
+    // ensure one panel is active
+    const anyActive = Object.values(MOB_PANELS).some(el => el && el.classList.contains('mob-panel-active'));
+    if (!anyActive) mobSwitch('cal');
+  }
+});
+
+</script>
+</body>
+</html>
