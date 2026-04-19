@@ -1716,7 +1716,7 @@ function openModalManual(tStr) {
   openModal();
 }
 function openModal() {
-  document.body.classList.add('modal-open');
+  document.body.classList.add('keyboard-active');
   // Random color each open
   selColor = COLORS[Math.floor(Math.random() * COLORS.length)];
   buildColorPicker();
@@ -1724,7 +1724,7 @@ function openModal() {
   document.getElementById('markerModal').classList.remove('hidden');
 }
 function closeModal() {
-  document.body.classList.remove('modal-open');
+  document.body.classList.remove('keyboard-active');
   document.getElementById('markerModal').classList.add('hidden');
   ['mName','mPhone','mLoc'].forEach(id => document.getElementById(id).value='');
   document.getElementById('mFrom').value = 'VIT CHENNAI';
@@ -1810,12 +1810,12 @@ function viewMarker(id) {
   if (fromEl) fromEl.textContent = mk.from || 'VIT CHENNAI';
   document.getElementById('sLoc').textContent = mk.location;
   document.getElementById('sDelBtn').onclick = () => { deleteMk(mk.id); closeSummary(); };
-  document.body.classList.add('modal-open');
+  document.body.classList.add('keyboard-active');
   document.getElementById('summaryModal').classList.remove('hidden');
 }
 
 function closeSummary() {
-  document.body.classList.remove('modal-open');
+  document.body.classList.remove('keyboard-active');
   document.getElementById('summaryModal').classList.add('hidden');
 }
 
@@ -2066,7 +2066,6 @@ function initMobile() {
   }
 
   // Robust Keyboard Fix using Visual Viewport
-  // When keyboard opens, viewport height drops.
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
       const isKeyboardUp = window.visualViewport.height < window.innerHeight * 0.85;
@@ -2074,20 +2073,21 @@ function initMobile() {
     });
   }
 
-  // Backup: Hide nav when any input is focused
-  const inputs = document.querySelectorAll('input, textarea, select');
-  inputs.forEach(el => {
-    el.addEventListener('focus', () => {
-      if (window.innerWidth <= 768) document.body.classList.add('modal-open');
-    });
-    el.addEventListener('blur', () => {
-      // Delay removal to allow potential focus on another field
-      setTimeout(() => {
-        const modalVisible = !document.getElementById('markerModal').classList.contains('hidden') || 
-                             !document.getElementById('summaryModal').classList.contains('hidden');
-        if (!modalVisible) document.body.classList.remove('modal-open');
-      }, 100);
-    });
+  // Global delegation for focus/blur to ensure ALL inputs (static or dynamic) hide the nav
+  document.addEventListener('focusin', (e) => {
+    if (window.innerWidth <= 768 && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) {
+      document.body.classList.add('keyboard-active');
+    }
+  });
+  document.addEventListener('focusout', (e) => {
+    setTimeout(() => {
+      const stillFocused = ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName);
+      const modalOpen = !document.getElementById('markerModal').classList.contains('hidden') || 
+                        !document.getElementById('summaryModal').classList.contains('hidden');
+      if (!stillFocused && !modalOpen) {
+        document.body.classList.remove('keyboard-active');
+      }
+    }, 100);
   });
 }
 window.addEventListener('resize', () => {
