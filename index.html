@@ -698,7 +698,10 @@
     .mob-tab.active { color: var(--p4); }
     .mob-tab.active svg { filter: drop-shadow(0 0 6px rgba(139,92,246,.6)); }
 
-    body.modal-open .mob-nav { display: none !important; }
+    body.modal-open .mob-nav,
+    body.keyboard-active .mob-nav { 
+      display: none !important; 
+    }
 
     /* ═══════════════════════════════════════════════════
        RESPONSIVE — MOBILE (≤ 768px)
@@ -2062,17 +2065,28 @@ function initMobile() {
     mobSwitch('cal'); // show calendar first on mobile
   }
 
-  // Keyboard fix: Hide nav when typing
+  // Robust Keyboard Fix using Visual Viewport
+  // When keyboard opens, viewport height drops.
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      const isKeyboardUp = window.visualViewport.height < window.innerHeight * 0.85;
+      document.body.classList.toggle('keyboard-active', isKeyboardUp);
+    });
+  }
+
+  // Backup: Hide nav when any input is focused
   const inputs = document.querySelectorAll('input, textarea, select');
   inputs.forEach(el => {
     el.addEventListener('focus', () => {
       if (window.innerWidth <= 768) document.body.classList.add('modal-open');
     });
     el.addEventListener('blur', () => {
-      // Only remove if no modal is actually open
-      const modalOpen = !document.getElementById('markerModal').classList.contains('hidden') || 
-                        !document.getElementById('summaryModal').classList.contains('hidden');
-      if (!modalOpen) document.body.classList.remove('modal-open');
+      // Delay removal to allow potential focus on another field
+      setTimeout(() => {
+        const modalVisible = !document.getElementById('markerModal').classList.contains('hidden') || 
+                             !document.getElementById('summaryModal').classList.contains('hidden');
+        if (!modalVisible) document.body.classList.remove('modal-open');
+      }, 100);
     });
   });
 }
