@@ -662,19 +662,7 @@
     .swatch:hover { transform:scale(1.15); }
     .swatch.sel   { border-color:#fff; transform:scale(1.2); box-shadow:0 0 8px rgba(255,255,255,.3); }
 
-    /* ─── TOAST ───────────────────────────────────────── */
-    .toast {
-      position:fixed; bottom:1.5rem; left:50%;
-      transform:translateX(-50%) translateY(100px);
-      background:rgba(14,14,16,.97); border:1px solid rgba(63,63,70,.7);
-      color:var(--z1); padding:.65rem 1.1rem; border-radius:.7rem;
-      font-size:.82rem; font-weight:500; z-index:500;
-      display:flex; align-items:center; gap:.5rem;
-      box-shadow:0 18px 36px rgba(0,0,0,.5);
-      transition:transform .3s cubic-bezier(.34,1.56,.64,1);
-      backdrop-filter:blur(12px); white-space:nowrap;
-    }
-    .toast.show { transform:translateX(-50%) translateY(0); }
+
 
     /* ═══════════════════════════════════════════════════
        MOBILE BOTTOM NAV
@@ -1138,11 +1126,7 @@
   </div>
 </div>
 
-<!-- TOAST -->
-<div class="toast" id="toast">
-  <span id="toastIcon">✅</span>
-  <span id="toastMsg">Done</span>
-</div>
+
 
 <script>
 /* ──────────────────────────────────────────────────
@@ -1746,11 +1730,11 @@ function submitMarker() {
   const from  = document.getElementById('mFrom').value.trim();
   const loc   = document.getElementById('mLoc').value.trim();
   const t     = document.getElementById('mTime').value;
-  if (!name)  { hilite('mName');  showToast('⚠️','Name required');     return; }
-  if (!phone) { hilite('mPhone'); showToast('⚠️','Phone required');    return; }
-  if (!from)  { hilite('mFrom');  showToast('⚠️','Leaving point required'); return; }
-  if (!loc)   { hilite('mLoc');   showToast('⚠️','Drop location required'); return; }
-  if (!t)     { hilite('mTime');  showToast('⚠️','Time required');     return; }
+  if (!name)  { hilite('mName');  return; }
+  if (!phone) { hilite('mPhone'); return; }
+  if (!from)  { hilite('mFrom');  return; }
+  if (!loc)   { hilite('mLoc');   return; }
+  if (!t)     { hilite('mTime');  return; }
 
   const [h,m] = t.split(':').map(Number);
   const frac  = pendingFrac !== null ? pendingFrac : (h*60+m)/(24*60);
@@ -1862,7 +1846,6 @@ function deleteMk(id) {
   deleteMkFromR2(id).then(() => {
     if (window.location.hash === '#admin') renderAdmin();
     else { renderMarkers(); renderRides(); renderConsolidated(); renderCalendar(); }
-    showToast('🗑️','Marker removed');
   });
 }
 
@@ -1877,19 +1860,6 @@ function buildColorPicker() {
   ).join('');
 }
 
-
-/* ──────────────────────────────────────────────────
-   TOAST
-────────────────────────────────────────────────── */
-let _tt;
-function showToast(icon, msg) {
-  document.getElementById('toastIcon').textContent = icon;
-  document.getElementById('toastMsg').textContent  = msg;
-  const t = document.getElementById('toast');
-  t.classList.add('show');
-  clearTimeout(_tt);
-  _tt = setTimeout(()=>t.classList.remove('show'), 2800);
-}
 
 /* Hilite invalid field */
 function hilite(id) {
@@ -2004,7 +1974,6 @@ function getMostCommonHour(markers) {
 
 function refreshAdmin() {
   renderAdmin();
-  showToast('🔄', 'Data refreshed');
 }
 
 
