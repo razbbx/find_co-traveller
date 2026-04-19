@@ -852,8 +852,13 @@
     <!-- ── RIGHT COLUMN: Traveler Consolidated ── -->
     <div class="right-col slide-up" style="animation-delay:.18s">
       <div class="right-col-header">
-        <h2>🧑‍🤝‍🧑 Traveler Groups</h2>
-        <span class="group-count-badge" id="groupCountBadge">0 groups</span>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.25rem;">
+          <h2>🧑‍🤝‍🧑 Traveler Groups</h2>
+          <span class="group-count-badge" id="groupCountBadge">0 groups</span>
+        </div>
+        <p style="font-size:0.75rem; color:var(--z6); line-height:1.3; margin:0;">
+          Groups appear when 2+ people have the <b>same drop location</b> within ±1 hour on the same day.
+        </p>
       </div>
       <div class="consolidated-scroll" id="consolidatedScroll">
         <!-- filled by JS -->
@@ -1590,8 +1595,8 @@ function renderConsolidated() {
 
   if (!totalGroups) {
     scroll.innerHTML = `<div class="cons-empty">
-      <div class="cons-empty-icon">🕐</div>
-      <p>No overlapping travelers yet.<br>Groups appear when 2+ people have the <b>same drop location</b> within ±1 hour on the same day.</p>
+      <div class="cons-empty-icon">🧑‍🤝‍🧑</div>
+      <p>No overlapping travelers yet.</p>
     </div>`;
   } else {
     scroll.innerHTML = html;
