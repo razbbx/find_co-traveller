@@ -3227,10 +3227,11 @@
       document.getElementById('sName').textContent = mk.name;
       document.getElementById('sTime').textContent = timeStr(h, m);
 
-      const phBtn = document.getElementById('sPhoneBtn');
-      phBtn.textContent = '📞 Reveal';
-      phBtn.onclick = () => {
-        phBtn.outerHTML = `<a href="tel:${mk.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(mk.phone)}</a>`;
+      const phoneContainer = document.getElementById('sPhone');
+      phoneContainer.innerHTML = `<button class="btn-primary" id="sPhoneBtn" style="padding:.4rem 1rem; width: 100%; font-size: .9rem;">📞 Reveal</button>`;
+      
+      document.getElementById('sPhoneBtn').onclick = () => {
+        phoneContainer.innerHTML = `<a href="tel:${mk.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(mk.phone)}</a>`;
       };
 
       const fromEl = document.getElementById('sFrom');
