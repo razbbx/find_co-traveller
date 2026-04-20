@@ -151,11 +151,13 @@ export async function onRequest(ctx) {
   if (path === '/api/reveal' && request.method === 'POST') {
     let body;
     try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
-    const { id, date, token } = body;
-    if (!id || !date) return json({ error: 'Missing id or date' }, 400);
+    const { id, date, token, sessionId } = body;
+    if (!id || !date || !sessionId) return json({ error: 'Missing id, date, or session identifier' }, 400);
 
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-    const ipData = ipLimits.get(ip) || { count: 0, lastReq: 0 };
+    const trackerId = sessionId; // Track by browser session, not IP
+    
+    const ipData = ipLimits.get(trackerId) || { count: 0, lastReq: 0 };
     const timeSince = Date.now() - ipData.lastReq;
 
     if (ipData.count >= 5) {
@@ -186,7 +188,7 @@ export async function onRequest(ctx) {
     
     ipData.count += 1;
     ipData.lastReq = Date.now();
-    ipLimits.set(ip, ipData);
+    ipLimits.set(trackerId, ipData);
     
     return json({ phone: mk.phone });
   }

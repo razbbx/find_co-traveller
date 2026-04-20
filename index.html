@@ -3300,11 +3300,17 @@
       const originalHtml = containerEl.innerHTML;
       containerEl.innerHTML = '<span style="color:var(--z5); display:block; text-align:center; padding:.5rem;">Securely fetching...</span>';
       
+      let sessionId = localStorage.getItem('cs_session_id');
+      if (!sessionId) {
+        sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+        localStorage.setItem('cs_session_id', sessionId);
+      }
+
       try {
         const res = await fetch(API.replace('/markers', '/reveal'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id, date, token })
+          body: JSON.stringify({ id, date, token, sessionId })
         });
         
         const data = await res.json();
