@@ -155,11 +155,15 @@ export async function onRequest(ctx) {
     if (!id || !date) return json({ error: 'Missing id or date' }, 400);
 
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-    const lastReq = ipLimits.get(ip) || 0;
-    const timeSince = Date.now() - lastReq;
+    const ipData = ipLimits.get(ip) || { count: 0, lastReq: 0 };
+    const timeSince = Date.now() - ipData.lastReq;
 
-    if (timeSince < 60000) {
-      if (!token) return json({ error: 'Rate limited' }, 429);
+    if (ipData.count >= 5) {
+      return json({ error: 'Session limit reached (Max 5 reveals). Please try again later.' }, 403);
+    }
+
+    if (timeSince < 60000 && ipData.count > 0) {
+      if (!token) return json({ error: 'Rate limited', waitMs: 60000 - timeSince }, 429);
       
       const formData = new FormData();
       formData.append('secret', TURNSTILE_SECRET);
@@ -179,7 +183,10 @@ export async function onRequest(ctx) {
     if (!mk) return json({ error: 'Marker not found' }, 404);
 
     if (ipLimits.size > 10000) ipLimits.clear(); // Prevent memory leak
-    ipLimits.set(ip, Date.now());
+    
+    ipData.count += 1;
+    ipData.lastReq = Date.now();
+    ipLimits.set(ip, ipData);
     
     return json({ phone: mk.phone });
   }

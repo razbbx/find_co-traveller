@@ -3311,16 +3311,50 @@
         
         if (!res.ok) {
           if (res.status === 429) {
+            const waitMs = data.waitMs || 60000;
+            const targetTime = Date.now() + waitMs;
+            
             containerEl.innerHTML = `
-              <div style="font-size:0.85rem; color:var(--z4); margin-bottom:.5rem; text-align:center;">Security Check Required:</div>
-              <div id="cf-turnstile-box-${id}" style="display:flex; justify-content:center;"></div>
+              <div style="text-align:center;">
+                <button class="btn-secondary" id="timerBtn-${id}" disabled style="width:100%; margin-bottom:.5rem;">Wait 60s</button>
+                <div style="font-size:0.75rem; color:var(--z5); margin-bottom:.5rem;">OR</div>
+                <button class="btn-primary" id="bypassBtn-${id}" style="width:100%; font-size:.85rem; padding:.5rem;">Show Now (Security Check)</button>
+              </div>
+              <div id="cf-turnstile-box-${id}" style="display:none; justify-content:center; margin-top:.5rem;"></div>
             `;
-            turnstile.render(`#cf-turnstile-box-${id}`, {
-              sitekey: '0x4AAAAAADAOsrNXcviCxcOc',
-              callback: function(tkn) {
-                doReveal(id, date, containerEl, tkn);
+            
+            const timerBtn = document.getElementById(`timerBtn-${id}`);
+            const bypassBtn = document.getElementById(`bypassBtn-${id}`);
+            const tsBox = document.getElementById(`cf-turnstile-box-${id}`);
+            
+            const intv = setInterval(() => {
+              const remain = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
+              if (remain <= 0) {
+                clearInterval(intv);
+                if (timerBtn) {
+                  timerBtn.textContent = '📞 Reveal Number';
+                  timerBtn.disabled = false;
+                  timerBtn.className = 'btn-primary';
+                  timerBtn.onclick = () => doReveal(id, date, containerEl);
+                  bypassBtn.style.display = 'none';
+                  tsBox.style.display = 'none';
+                }
+              } else {
+                if (timerBtn) timerBtn.textContent = `Wait ${remain}s`;
               }
-            });
+            }, 1000);
+            
+            bypassBtn.onclick = () => {
+              bypassBtn.style.display = 'none';
+              tsBox.style.display = 'flex';
+              turnstile.render(`#cf-turnstile-box-${id}`, {
+                sitekey: '0x4AAAAAADAOsrNXcviCxcOc',
+                callback: function(tkn) {
+                  clearInterval(intv);
+                  doReveal(id, date, containerEl, tkn);
+                }
+              });
+            };
             return;
           }
           throw new Error(data.error || 'Failed to reveal');
