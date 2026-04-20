@@ -2538,9 +2538,9 @@
       } catch (e) { console.warn('R2 save failed', e); }
     }
 
-    async function deleteMkFromR2(id) {
-      for (const d of Object.keys(_cache)) {
-        const idx = _cache[d].findIndex(m => m.id === id);
+    async function deleteMkFromR2(id, dateStr) {
+      const doDelete = async (d) => {
+        const idx = (_cache[d] || []).findIndex(m => m.id == id);
         if (idx !== -1) {
           const [removed] = _cache[d].splice(idx, 1);
 
@@ -2557,13 +2557,22 @@
             else localStorage.removeItem(`cs_mk_${d}`);
           } else {
             try {
-              await fetch(`${API}/${id}`, { 
+              await fetch(`${API}/${id}?date=${d}`, { 
                 method: 'DELETE',
                 headers: { 'X-Admin-Pass': adminPass }
               });
             } catch (e) { console.warn('R2 delete failed', e); }
           }
-          return;
+          return true;
+        }
+        return false;
+      };
+
+      if (dateStr) {
+        await doDelete(dateStr);
+      } else {
+        for (const d of Object.keys(_cache)) {
+          if (await doDelete(d)) break;
         }
       }
     }
@@ -2618,7 +2627,7 @@
       } else {
         // Local fallback
         const log = JSON.parse(localStorage.getItem('cs_deletion_log') || '[]');
-        const idx = log.findIndex(item => item.marker.id === id);
+        const idx = log.findIndex(item => item.marker.id == id);
         if (idx !== -1) {
           const item = log.splice(idx, 1)[0];
           localStorage.setItem('cs_deletion_log', JSON.stringify(log));
@@ -3214,7 +3223,7 @@
     }
 
     function viewMarker(id) {
-      const mk = loadMk(activeDate).find(m => m.id === id);
+      const mk = loadMk(activeDate).find(m => m.id == id);
       if (!mk) return;
       const [h, m] = mk.time.split(':').map(Number);
       document.getElementById('sName').textContent = mk.name;
@@ -3229,7 +3238,7 @@
       const fromEl = document.getElementById('sFrom');
       if (fromEl) fromEl.textContent = mk.from || 'VIT CHENNAI';
       document.getElementById('sLoc').textContent = mk.location;
-      document.getElementById('sDelBtn').onclick = () => { deleteMk(mk.id); closeSummary(); };
+      document.getElementById('sDelBtn').onclick = () => { deleteMk(mk.id, activeDate); closeSummary(); };
       document.body.classList.add('keyboard-active');
       document.getElementById('summaryModal').classList.remove('hidden');
     }
@@ -3277,16 +3286,17 @@
           </div>
         </div>
       </div>
-      <button class="del-btn" onclick="event.stopPropagation();deleteMk(${mk.id})" title="Remove">✕</button>
+      <button class="del-btn" onclick="event.stopPropagation();deleteMk(${mk.id}, '${activeDate}')" title="Remove">✕</button>
     </div>`;
       }).join('');
     }
 
-    function deleteMk(id) {
-      const mk = [...loadMk(activeDate), ...Object.values(_cache).flat()].find(m => m.id === id);
+    function deleteMk(id, dateStr) {
+      const list = dateStr ? loadMk(dateStr) : [...loadMk(activeDate), ...Object.values(_cache).flat()];
+      const mk = list.find(m => m.id == id);
       const name = mk ? mk.name : 'Rider';
 
-      deleteMkFromR2(id).then(() => {
+      deleteMkFromR2(id, dateStr).then(() => {
         if (window.location.hash === '#admin') renderAdmin();
         else { renderMarkers(); renderRides(); renderConsolidated(); renderCalendar(); }
 
@@ -3411,7 +3421,7 @@
       <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(m.location)}">📍 ${escHtml(m.location)}</td>
       <td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${m.color};border:2px solid rgba(255,255,255,.25)"></span></td>
       <td>
-        <button class="btn-icon-del" onclick="if(confirm('Delete ${escHtml(m.name)}?'))deleteMk(${m.id})" title="Delete">
+        <button class="btn-icon-del" onclick="if(confirm('Delete ${escHtml(m.name)}?'))deleteMk(${m.id}, '${m.date}')" title="Delete">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </td>

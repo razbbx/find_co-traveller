@@ -160,12 +160,13 @@ export async function onRequest(ctx) {
     // Basic protection for deletions via dashboard
     if (!(await checkAdmin())) return json({ error: 'Unauthorized' }, 401);
 
-    const dates = await getIndex(bucket);
+    const targetDate = url.searchParams.get('date');
+    const dates = targetDate ? [targetDate] : await getIndex(bucket);
     let foundItem = null;
 
     for (const d of dates) {
       const markers = await getDateMarkers(bucket, d);
-      const idx = markers.findIndex(m => m.id === markerId);
+      const idx = markers.findIndex(m => m.id == markerId);
       if (idx !== -1) {
         const [removed] = markers.splice(idx, 1);
         foundItem = { date: d, marker: removed, deletedAt: Date.now() };
@@ -174,7 +175,8 @@ export async function onRequest(ctx) {
           await saveDateMarkers(bucket, d, markers);
         } else {
           await bucket.delete(dateKey(d));
-          const newIdx = dates.filter(x => x !== d);
+          const currentIndex = await getIndex(bucket);
+          const newIdx = currentIndex.filter(x => x !== d);
           await saveIndex(bucket, newIdx);
         }
         break;
