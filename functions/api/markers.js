@@ -92,15 +92,15 @@ export async function onRequest(ctx) {
 
   // POST /api/restore
   if (path === '/api/restore' && request.method === 'POST') {
-    if (!(await checkAdmin())) return json({ error: 'Unauthorized' }, 401);
+    if (!(await checkAdmin())) return json({ error: 'Unauthorized (Invalid Password)' }, 401);
     let body;
     try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
     const { id } = body;
     if (!id) return json({ error: 'Missing ID' }, 400);
 
     const deleted = await getDeletedMarkers(bucket);
-    const idx = deleted.findIndex(item => item.marker.id === id);
-    if (idx === -1) return json({ error: 'Marker not found in trash' }, 404);
+    const idx = deleted.findIndex(item => item.marker.id == id);
+    if (idx === -1) return json({ error: `Marker ${id} not found in trash` }, 404);
 
     const item = deleted.splice(idx, 1)[0];
     await saveDeletedMarkers(bucket, deleted);

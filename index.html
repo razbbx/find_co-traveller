@@ -2611,7 +2611,8 @@
             renderAdmin();
             showToast('✅', 'Marker restored');
           } else {
-            showToast('❌', 'Restore failed (Unauthorized)');
+            const data = await res.json().catch(() => ({}));
+            showToast('❌', `Restore failed: ${data.error || res.statusText}`);
           }
         } catch (e) { console.warn('Restore failed', e); }
       } else {
