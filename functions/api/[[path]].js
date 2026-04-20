@@ -166,12 +166,15 @@ export async function onRequest(ctx) {
     if (!(await checkAdmin())) return json({ error: 'Unauthorized' }, 401);
 
     const targetDate = url.searchParams.get('date');
+    const targetTs = url.searchParams.get('ts');
     const dates = targetDate ? [targetDate] : await getIndex(bucket);
     let foundItem = null;
 
     for (const d of dates) {
       const markers = await getDateMarkers(bucket, d);
-      const idx = markers.findIndex(m => m.id == markerId);
+      let idx = -1;
+      if (targetTs) idx = markers.findIndex(m => m.id == markerId && m.ts == targetTs);
+      if (idx === -1) idx = markers.findIndex(m => m.id == markerId); // Fallback
       if (idx !== -1) {
         const [removed] = markers.splice(idx, 1);
         foundItem = { date: d, marker: removed, deletedAt: Date.now() };

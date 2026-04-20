@@ -2558,9 +2558,12 @@
       } catch (e) { console.warn('R2 save failed', e); }
     }
 
-    async function deleteMkFromR2(id, dateStr) {
+    async function deleteMkFromR2(id, dateStr, ts) {
       const doDelete = async (d) => {
-        const idx = (_cache[d] || []).findIndex(m => m.id == id);
+        let idx = -1;
+        if (ts) idx = (_cache[d] || []).findIndex(m => m.id == id && m.ts == ts);
+        if (idx === -1) idx = (_cache[d] || []).findIndex(m => m.id == id); // Fallback
+        
         if (idx !== -1) {
           const [removed] = _cache[d].splice(idx, 1);
 
@@ -2577,7 +2580,9 @@
             else localStorage.removeItem(`cs_mk_${d}`);
           } else {
             try {
-              await fetch(`${API}/${id}?date=${d}`, { 
+              let url = `${API}/${id}?date=${d}`;
+              if (ts) url += `&ts=${ts}`;
+              await fetch(url, { 
                 method: 'DELETE',
                 headers: { 'X-Admin-Pass': adminPass }
               });
@@ -3312,12 +3317,14 @@
       }).join('');
     }
 
-    function deleteMk(id, dateStr) {
+    function deleteMk(id, dateStr, ts) {
       const list = dateStr ? loadMk(dateStr) : [...loadMk(activeDate), ...Object.values(_cache).flat()];
-      const mk = list.find(m => m.id == id);
+      let mk;
+      if (ts) mk = list.find(m => m.id == id && m.ts == ts);
+      if (!mk) mk = list.find(m => m.id == id);
       const name = mk ? mk.name : 'Rider';
 
-      deleteMkFromR2(id, dateStr).then(() => {
+      deleteMkFromR2(id, dateStr, ts).then(() => {
         if (window.location.hash === '#admin') renderAdmin();
         else { renderMarkers(); renderRides(); renderConsolidated(); renderCalendar(); }
 
@@ -3442,7 +3449,7 @@
       <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(m.location)}">📍 ${escHtml(m.location)}</td>
       <td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${m.color};border:2px solid rgba(255,255,255,.25)"></span></td>
       <td>
-        <button class="btn-icon-del" onclick="if(confirm('Delete ${escHtml(m.name)}?'))deleteMk(${m.id}, '${m.date}')" title="Delete">
+        <button class="btn-icon-del" onclick="if(confirm('Delete ${escHtml(m.name)}?'))deleteMk(${m.id}, '${m.date}', ${m.ts || 'null'})" title="Delete">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </td>
