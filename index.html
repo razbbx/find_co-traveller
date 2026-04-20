@@ -2468,6 +2468,7 @@
               <tr>
                 <th>Date</th>
                 <th>Name</th>
+                <th>Time</th>
                 <th>Phone</th>
                 <th>📍 Location</th>
                 <th>Action</th>
@@ -3441,6 +3442,7 @@
         <tr>
           <td><span class="admin-badge" style="background:rgba(239,68,68,0.1); color:var(--z6)">${niceDateShort(item.date)}</span></td>
           <td style="font-weight:700; opacity:0.7">${escHtml(item.marker.name)}</td>
+          <td style="color:var(--p4);font-weight:700; opacity:0.8">${item.marker.time ? timeStr(...item.marker.time.split(':').map(Number)) : '—'}</td>
           <td style="font-size:.8rem; opacity:0.6">${escHtml(item.marker.phone)}</td>
           <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; opacity:0.6">📍 ${escHtml(item.marker.location)}</td>
           <td>
