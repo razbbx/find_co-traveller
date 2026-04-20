@@ -59,14 +59,15 @@
 
     /* ─── GLASS CARD ──────────────────────────────────── */
     .glass {
-      background: rgba(24,24,27,.45);
-      backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px);
-      border: 1px solid rgba(39,39,42,.55);
-      border-radius: 1.1rem;
-      box-shadow: 0 25px 50px -12px rgba(0,0,0,.55);
+      background: rgba(24,24,27,.6);
+      backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 1.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,.6);
+      transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .glass-sm { border-radius: .75rem; }
-    .glass:hover { border-color: rgba(63,63,70,.8); transition: border-color .2s; }
+    .glass-sm { border-radius: .85rem; }
+    .glass:hover { border-color: rgba(139,92,246,.4); box-shadow: 0 0 25px rgba(139,92,246,0.15); }
 
     /* ─── INPUTS ──────────────────────────────────────── */
     .inp {
@@ -140,10 +141,10 @@
       font-size:1.15rem; font-weight:700;
     }
     .logo-icon {
-      width:32px; height:32px;
-      background: linear-gradient(135deg, var(--p5), var(--p7));
-      border-radius:8px; display:flex; align-items:center; justify-content:center;
-      font-size:.95rem;
+      width:38px; height:38px;
+      background: linear-gradient(135deg, var(--p5), #ec4899);
+      border-radius:12px; display:flex; align-items:center; justify-content:center;
+      font-size:1.1rem; box-shadow: 0 0 20px rgba(236,72,153,0.3);
     }
     .header-badge {
       font-size:.72rem;
@@ -152,10 +153,10 @@
       color:var(--p3); padding:.28rem .75rem; border-radius:9999px;
     }
     .date-pill {
-      display:flex; align-items:center; gap:.4rem;
-      font-size:.8rem; padding:.3rem .85rem; border-radius:9999px;
-      background: rgba(124,58,237,.15); border:1px solid rgba(139,92,246,.25);
-      color:var(--p3);
+      display:flex; align-items:center; gap:.45rem;
+      font-size:.85rem; font-weight: 600; padding:.4rem 1rem; border-radius:9999px;
+      background: rgba(139,92,246,.15); border:1px solid rgba(139,92,246,.3);
+      color:var(--p3); box-shadow: 0 0 15px rgba(139,92,246,0.1);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -389,17 +390,18 @@
     .hour-lbl.hl { color:var(--p4); font-weight:700; }
 
     .tl-track {
-      position:absolute; top:130px; left:0; right:0; height:52px;
-      background:rgba(24,24,27,.65); border:1px solid rgba(63,63,70,.45);
-      border-radius:.85rem; cursor:crosshair; overflow:visible; transition:border-color .2s;
+      position:absolute; top:130px; left:0; right:0; height:60px;
+      background:rgba(24,24,27,.7); border:1px solid rgba(255,255,255,.1);
+      border-radius:1rem; cursor:crosshair; overflow:visible; transition:all .3s;
+      box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
     }
-    .tl-track:hover { border-color:rgba(139,92,246,.45); }
+    .tl-track:hover { border-color:rgba(139,92,246,.4); background:rgba(24,24,27,.8); }
     .tl-grad {
       position:absolute; inset:0; border-radius:inherit;
       background:linear-gradient(90deg,
-        rgba(124,58,237,.05) 0%, rgba(139,92,246,.13) 25%,
-        rgba(167,139,250,.07) 50%, rgba(139,92,246,.13) 75%,
-        rgba(124,58,237,.05) 100%);
+        rgba(124,58,237,.1) 0%, rgba(139,92,246,.2) 25%,
+        rgba(167,139,250,.1) 50%, rgba(139,92,246,.2) 75%,
+        rgba(124,58,237,.1) 100%);
       pointer-events:none;
     }
     .tl-ticks { position:absolute; inset:0; border-radius:inherit; overflow:hidden; pointer-events:none; }
@@ -505,24 +507,27 @@
       gap:.7rem; align-content:start; padding-right:.2rem;
     }
     .ride-card {
-      padding:.85rem 1rem; border-radius:.8rem; position:relative; overflow:hidden;
-      background:rgba(24,24,27,.5); border:1px solid rgba(63,63,70,.35);
-      transition:all .22s; cursor:default;
+      padding:1.1rem; border-radius:1.1rem; position:relative; overflow:hidden;
+      background:rgba(30,30,35,.6); border:1px solid rgba(255,255,255,.08);
+      transition:all .3s cubic-bezier(0.4, 0, 0.2, 1); cursor:pointer;
+      display: flex; align-items: center; gap: 1rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
-    .ride-card:hover { transform:translateY(-2px); border-color:rgba(63,63,70,.8); box-shadow:0 16px 32px rgba(0,0,0,.35); }
-    .ride-accent { position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; }
-    .ride-inner { padding-left:.55rem; }
-    .ride-name { font-size:.88rem; font-weight:700; margin-bottom:.15rem; }
-    .ride-time { font-size:.75rem; font-weight:600; margin-bottom:.4rem; }
-    .ride-meta { display:flex; flex-direction:column; gap:.22rem; }
-    .ride-meta-r { display:flex; align-items:center; gap:.35rem; font-size:.73rem; color:var(--z5); }
+    .ride-card:hover { transform:scale(1.02); border-color:rgba(139,92,246,.4); box-shadow:0 12px 25px rgba(0,0,0,0.4); }
+    .ride-accent { position:absolute; left:0; top:0; bottom:0; width:4px; border-radius:4px 0 0 4px; }
+    .ride-inner { flex: 1; min-width: 0; }
+    .ride-name { font-size:1.05rem; font-weight:700; color: #fff; margin-bottom:.15rem; }
+    .ride-time { font-size:.9rem; font-weight:800; margin-bottom:.4rem; letter-spacing: 0.01em; }
+    .ride-meta { display:flex; flex-direction:column; gap:.3rem; }
+    .ride-meta-r { display:flex; align-items:center; gap:.45rem; font-size:.8rem; color:var(--z4); }
     .del-btn {
-      position:absolute; top:.5rem; right:.5rem;
-      background:rgba(239,68,68,.1); border:none; color:var(--z7); cursor:pointer;
-      font-size:.8rem; padding:.3rem .5rem; border-radius:.45rem; transition:all .2s;
-      z-index: 2;
+      position:static;
+      background:rgba(239,68,68,.1); border:none; color:rgba(239,68,68,0.7); cursor:pointer;
+      font-size:.9rem; width: 32px; height: 32px; border-radius:50%; transition:all .2s;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
-    .del-btn:hover { background:rgba(239,68,68,.25); color:#ef4444; }
+    .del-btn:hover { background:rgba(239,68,68,.25); color:#ef4444; transform: rotate(90deg); }
 
     .empty-rides {
       grid-column:1/-1; text-align:center;
@@ -698,8 +703,8 @@
       letter-spacing: .05em; min-width: 60px;
     }
     .mob-tab svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; }
-    .mob-tab.active { color: var(--p4); }
-    .mob-tab.active svg { filter: drop-shadow(0 0 6px rgba(139,92,246,.6)); }
+    .mob-tab.active { color: var(--p4); background: rgba(139,92,246,0.1); }
+    .mob-tab.active svg { stroke: var(--p4); filter: drop-shadow(0 0 8px rgba(139,92,246,.8)); }
 
     body.modal-open .mob-nav,
     body.keyboard-active .mob-nav { 
@@ -1851,29 +1856,30 @@ function renderRides() {
   document.getElementById('ridesCount').textContent = `${mkrs.length} rider${mkrs.length!==1?'s':''}`;
 
   if (!mkrs.length) {
-    grid.innerHTML = `<div class="empty-rides">
-      <svg width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+    grid.innerHTML = `<div class="empty-rides" style="padding: 3rem 1rem;">
+      <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24" style="margin-bottom: 1rem; opacity: 0.3;">
         <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
       </svg>
-      No riders yet — click the timeline to add your marker!
+      <div style="font-size: 1rem; font-weight: 500; color: var(--z5);">No riders on this day yet</div>
+      <div style="font-size: .8rem; margin-top: .5rem; opacity: 0.6;">Click the timeline above to join!</div>
     </div>`;
     return;
   }
 
-  grid.innerHTML = mkrs.map(mk => {
+  grid.innerHTML = mkrs.map((mk, idx) => {
     const [h,m] = mk.time.split(':').map(Number);
     const ts = timeStr(h,m);
-    return `<div class="ride-card slide-up" onclick="viewMarker(${mk.id})" style="cursor:pointer">
-      <div class="ride-accent" style="background:${mk.color}"></div>
+    return `<div class="ride-card slide-up" onclick="viewMarker(${mk.id})" style="animation-delay:${idx*0.05}s">
+      <div class="ride-accent" style="background:${mk.color}; box-shadow: 0 0 12px ${mk.color}66;"></div>
       <div class="ride-inner">
-        <div class="ride-name" style="font-size: 1rem; margin-bottom: .2rem;">${escHtml(mk.name)}</div>
-        <div class="ride-time" style="color:${mk.color}; font-size: .85rem; font-weight: 800; margin-bottom: .5rem;">${ts}</div>
+        <div class="ride-name">${escHtml(mk.name)}</div>
+        <div class="ride-time" style="color:${mk.color}">${ts}</div>
         <div class="ride-meta">
-          <div class="ride-meta-r" style="color: var(--z1); font-weight: 500;">
-            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            <span style="white-space: normal; line-height: 1.2;">To: ${escHtml(mk.location)}</span>
+          <div class="ride-meta-r">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span style="color: #fff; font-weight: 500;">${escHtml(mk.location)}</span>
           </div>
-          <div class="ride-meta-r" style="margin-top: .3rem; font-size: .7rem; opacity: 0.7;">
+          <div class="ride-meta-r" style="opacity: 0.6; font-size: 0.75rem;">
             From: ${escHtml(mk.from || 'VIT CHENNAI')}
           </div>
         </div>
