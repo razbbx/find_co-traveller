@@ -2490,6 +2490,7 @@
                 <th>Action</th>
                 <th>Rider Name</th>
                 <th>Target Date</th>
+                <th>Target Time</th>
                 <th>Details</th>
               </tr>
             </thead>
@@ -3484,6 +3485,7 @@
               action: 'ADDED',
               name: m.name,
               date: d,
+              time: m.time,
               phone: m.phone,
               loc: m.location
             });
@@ -3498,6 +3500,7 @@
             action: 'DELETED',
             name: m.name,
             date: item.date,
+            time: m.time,
             phone: m.phone,
             loc: m.location
           });
@@ -3506,6 +3509,7 @@
             action: 'ADDED',
             name: m.name,
             date: item.date,
+            time: m.time,
             phone: m.phone,
             loc: m.location
           });
@@ -3530,6 +3534,7 @@
               <td><span class="admin-badge" style="background:${actionBg}; color:${actionColor}">${ev.action}</span></td>
               <td style="font-weight:700">${escHtml(ev.name)}</td>
               <td style="font-size:0.85rem; color:var(--z5)">${niceDateShort(ev.date)}</td>
+              <td style="font-size:0.85rem; font-weight:600; color:var(--p4)">${ev.time ? timeStr(...ev.time.split(':').map(Number)) : '—'}</td>
               <td style="font-size:0.8rem; color:var(--z6); max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                 ${escHtml(ev.phone)} • ${escHtml(ev.loc)}
               </td>
