@@ -1253,21 +1253,56 @@ async function undoDelete() {
   if (!last) return;
   localStorage.setItem('cs_deletion_log', JSON.stringify(log));
   
-  await saveMkToR2(last.date, last.marker);
+  if (IS_CF) {
+    try {
+      await fetch('/api/restore', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Pass': adminPass
+        },
+        body: JSON.stringify({ id: last.marker.id })
+      });
+      await fetchAllFromR2();
+    } catch(e) { console.warn('Restore failed', e); }
+  } else {
+    await saveMkToR2(last.date, last.marker);
+  }
+
   if (window.location.hash === '#admin') renderAdmin();
   else { renderMarkers(); renderRides(); renderConsolidated(); renderCalendar(); }
   showToast('🔄', 'Action Undone');
 }
 
-async function restoreDeleted(idx) {
-  const log = JSON.parse(localStorage.getItem('cs_deletion_log') || '[]');
-  const item = log.splice(idx, 1)[0];
-  if (!item) return;
-  localStorage.setItem('cs_deletion_log', JSON.stringify(log));
-  
-  await saveMkToR2(item.date, item.marker);
-  renderAdmin();
-  showToast('✅', `${item.marker.name} restored`);
+async function restoreDeleted(id) {
+  if (IS_CF) {
+    try {
+      const res = await fetch('/api/restore', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'X-Admin-Pass': adminPass
+        },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        await fetchAllFromR2();
+        renderAdmin();
+        showToast('✅', 'Marker restored');
+      }
+    } catch(e) { console.warn('Restore failed', e); }
+  } else {
+    // Local fallback
+    const log = JSON.parse(localStorage.getItem('cs_deletion_log') || '[]');
+    const idx = log.findIndex(item => item.marker.id === id);
+    if (idx !== -1) {
+      const item = log.splice(idx, 1)[0];
+      localStorage.setItem('cs_deletion_log', JSON.stringify(log));
+      await saveMkToR2(item.date, item.marker);
+      renderAdmin();
+      showToast('✅', `${item.marker.name} restored`);
+    }
+  }
 }
 
 function allDatesWithMk() {
@@ -1342,6 +1377,7 @@ function fracFromTime(t) {
    ADMIN AUTH  (password validated server-side)
 ────────────────────────────────────────────────── */
 let adminUnlocked = false;
+let adminPass     = '';
 
 async function checkAdminAuth() {
   const val = document.getElementById('authInput').value;
@@ -1355,6 +1391,7 @@ async function checkAdminAuth() {
     });
     if (res.ok && (await res.json()).ok) {
       adminUnlocked = true;
+      adminPass = val;
       document.getElementById('adminAuthGate').style.display = 'none';
       renderAdmin();
       return;
@@ -2054,27 +2091,39 @@ function renderAdmin() {
     </tr>
   `).join('');
 
-  // Render Deleted Logs
-  const deletedLog = JSON.parse(localStorage.getItem('cs_deletion_log') || '[]');
-  document.getElementById('deletedBadge').textContent = deletedLog.length + ' items';
+  // Render Deleted Logs (Shared)
   const deletedTable = document.getElementById('adminDeletedContent');
-  
-  if (!deletedLog.length) {
-    deletedTable.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--z6)">No deleted logs.</td></tr>`;
+  const deletedBadge = document.getElementById('deletedBadge');
+
+  const showDeleted = (list) => {
+    deletedBadge.textContent = list.length + ' items';
+    if (!list.length) {
+      deletedTable.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--z6)">No deleted logs.</td></tr>`;
+    } else {
+      deletedTable.innerHTML = list.map((item) => `
+        <tr>
+          <td><span class="admin-badge" style="background:rgba(239,68,68,0.1); color:var(--z6)">${niceDateShort(item.date)}</span></td>
+          <td style="font-weight:700; opacity:0.7">${escHtml(item.marker.name)}</td>
+          <td style="font-size:.8rem; opacity:0.6">${escHtml(item.marker.phone)}</td>
+          <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; opacity:0.6">📍 ${escHtml(item.marker.location)}</td>
+          <td>
+            <button class="btn-primary" style="padding:.3rem .7rem; font-size:.7rem; background:var(--z8); border:1px solid var(--z7);" onclick="restoreDeleted(${item.marker.id})">
+              🔄 Restore
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+  };
+
+  if (IS_CF) {
+    fetch('/api/deleted', {
+      headers: { 'X-Admin-Pass': adminPass }
+    }).then(res => res.json()).then(showDeleted).catch(() => {
+      showDeleted(JSON.parse(localStorage.getItem('cs_deletion_log') || '[]'));
+    });
   } else {
-    deletedTable.innerHTML = deletedLog.map((item, idx) => `
-      <tr>
-        <td><span class="admin-badge" style="background:rgba(239,68,68,0.1); color:var(--z6)">${niceDateShort(item.date)}</span></td>
-        <td style="font-weight:700; opacity:0.7">${escHtml(item.marker.name)}</td>
-        <td style="font-size:.8rem; opacity:0.6">${escHtml(item.marker.phone)}</td>
-        <td style="max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; opacity:0.6">📍 ${escHtml(item.marker.location)}</td>
-        <td>
-          <button class="btn-primary" style="padding:.3rem .7rem; font-size:.7rem; background:var(--z8); border:1px solid var(--z7);" onclick="restoreDeleted(${idx})">
-            🔄 Restore
-          </button>
-        </td>
-      </tr>
-    `).join('');
+    showDeleted(JSON.parse(localStorage.getItem('cs_deletion_log') || '[]'));
   }
 }
 
