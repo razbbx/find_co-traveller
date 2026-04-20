@@ -3204,7 +3204,7 @@
         el.style.top = `${50 + (level * 15)}%`; // Shift down if overlapping
         el.style.zIndex = 10 + level;
 
-        el.onclick = (e) => { e.stopPropagation(); viewMarker(mk.id); };
+        el.onclick = (e) => { e.stopPropagation(); viewMarker(mk.id, mk.ts); };
         el.innerHTML = `
       <div class="marker-pin" style="background:${mk.color}"></div>
       <div class="marker-tooltip">
@@ -3220,8 +3220,10 @@
       });
     }
 
-    function viewMarker(id) {
-      const mk = loadMk(activeDate).find(m => m.id == id);
+    function viewMarker(id, ts) {
+      const list = loadMk(activeDate);
+      let mk = list.find(m => m.id == id && m.ts == ts);
+      if (!mk) mk = list.find(m => m.id == id); // Fallback for very old markers without ts
       if (!mk) return;
       const [h, m] = mk.time.split(':').map(Number);
       document.getElementById('sName').textContent = mk.name;
@@ -3269,7 +3271,7 @@
       grid.innerHTML = mkrs.map((mk, idx) => {
         const [h, m] = mk.time.split(':').map(Number);
         const ts = timeStr(h, m);
-        return `<div class="ride-card slide-up" onclick="viewMarker(${mk.id})" style="animation-delay:${idx * 0.05}s">
+        return `<div class="ride-card slide-up" onclick="viewMarker(${mk.id}, ${mk.ts})" style="animation-delay:${idx * 0.05}s">
       <div class="ride-accent" style="background:${mk.color}; box-shadow: 0 0 12px ${mk.color}66;"></div>
       <div class="ride-inner">
         <div class="ride-name">${escHtml(mk.name)}</div>
