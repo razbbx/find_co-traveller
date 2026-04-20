@@ -12,7 +12,7 @@
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Pass',
+  'Access-Control-Allow-Headers': 'Content-Type, X-Admin-Pass, X-Carpool-Client',
   'Content-Type': 'application/json',
 };
 
@@ -121,8 +121,13 @@ export async function onRequest(ctx) {
     return json({ ok: true });
   }
 
-  // GET /api/markers — return all data
+  // GET /api/markers — fetch all markers grouped by date
   if (path === '/api/markers' && request.method === 'GET') {
+    // Basic anti-scraping check
+    if (request.headers.get('X-Carpool-Client') !== 'true') {
+      return json({ error: 'Forbidden' }, 403);
+    }
+    
     const dates = await getIndex(bucket);
     const result = {};
     await Promise.all(dates.map(async (d) => {
