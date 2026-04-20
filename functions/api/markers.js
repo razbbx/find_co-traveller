@@ -157,6 +157,9 @@ export async function onRequest(ctx) {
   const markerId = Number(pathParts[pathParts.length - 1]);
 
   if (request.method === 'DELETE' && markerId) {
+    // Basic protection for deletions via dashboard
+    if (!(await checkAdmin())) return json({ error: 'Unauthorized' }, 401);
+
     const dates = await getIndex(bucket);
     let foundItem = null;
 
