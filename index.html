@@ -2386,6 +2386,22 @@
     </div>
   </div>
 
+  <!-- CONFIRM DELETE MODAL -->
+  <div class="modal hidden" id="confirmModal">
+    <div class="modal-bg" onclick="closeConfirmModal()"></div>
+    <div class="modal-content" style="max-width: 380px; text-align: center; padding: 2rem 1.5rem;">
+      <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
+      <div style="font-size: 1.25rem; font-weight: 700; color: var(--z1); margin-bottom: 0.5rem;">Delete Rider?</div>
+      <div style="font-size: 0.95rem; color: var(--z5); line-height: 1.5; margin-bottom: 1.5rem;">
+        Are you sure you want to delete <span id="confirmName" style="color: var(--p4); font-weight: 700;"></span>? This action can be undone later from the recycle bin.
+      </div>
+      <div style="display: flex; gap: 0.75rem;">
+        <button class="btn-secondary" style="flex: 1;" onclick="closeConfirmModal()">Cancel</button>
+        <button class="btn-primary" style="flex: 1; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3);" id="confirmBtn">Yes, Delete</button>
+      </div>
+    </div>
+  </div>
+
   <!-- AUTH GATE -->
   <div id="adminAuthGate" style="display:none">
     <div class="auth-card">
@@ -3317,6 +3333,27 @@
       }).join('');
     }
 
+    let pendingDelete = null;
+    function promptDelete(id, date, ts, name) {
+      pendingDelete = { id, date, ts };
+      document.getElementById('confirmName').textContent = name || 'this rider';
+      document.body.classList.add('keyboard-active');
+      document.getElementById('confirmModal').classList.remove('hidden');
+    }
+
+    function closeConfirmModal() {
+      pendingDelete = null;
+      document.body.classList.remove('keyboard-active');
+      document.getElementById('confirmModal').classList.add('hidden');
+    }
+
+    document.getElementById('confirmBtn').onclick = () => {
+      if (pendingDelete) {
+        deleteMk(pendingDelete.id, pendingDelete.date, pendingDelete.ts);
+        closeConfirmModal();
+      }
+    };
+
     function deleteMk(id, dateStr, ts) {
       const list = dateStr ? loadMk(dateStr) : [...loadMk(activeDate), ...Object.values(_cache).flat()];
       let mk;
@@ -3449,7 +3486,7 @@
       <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(m.location)}">📍 ${escHtml(m.location)}</td>
       <td><span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${m.color};border:2px solid rgba(255,255,255,.25)"></span></td>
       <td>
-        <button class="btn-icon-del" onclick="if(confirm('Delete ${escHtml(m.name)}?'))deleteMk(${m.id}, '${m.date}', ${m.ts || 'null'})" title="Delete">
+        <button class="btn-icon-del" onclick="promptDelete(${m.id}, '${m.date}', ${m.ts || 'null'}, '${escHtml(m.name).replace(/'/g, "\\'")}')" title="Delete">
           <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
       </td>
