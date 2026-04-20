@@ -440,9 +440,9 @@
       width:13px; height:13px; border-radius:50%;
       border:2.5px solid #fff;
       box-shadow:0 0 10px rgba(139,92,246,.5),0 2px 8px rgba(0,0,0,.5);
-      transition:transform .2s;
+      transition:transform .2s, top .2s;
     }
-    .marker:hover .marker-pin { transform:scale(1.45); }
+    .marker:hover .marker-pin { transform:scale(1.45); z-index: 20; }
     .marker-tooltip {
       position:absolute; bottom:calc(100% + 14px); left:50%;
       transform:translateX(-50%) translateY(4px);
@@ -518,10 +518,11 @@
     .ride-meta-r { display:flex; align-items:center; gap:.35rem; font-size:.73rem; color:var(--z5); }
     .del-btn {
       position:absolute; top:.5rem; right:.5rem;
-      background:none; border:none; color:var(--z7); cursor:pointer;
-      font-size:.8rem; padding:.2rem .35rem; border-radius:.35rem; transition:all .2s;
+      background:rgba(239,68,68,.1); border:none; color:var(--z7); cursor:pointer;
+      font-size:.8rem; padding:.3rem .5rem; border-radius:.45rem; transition:all .2s;
+      z-index: 2;
     }
-    .del-btn:hover { background:rgba(239,68,68,.15); color:#ef4444; }
+    .del-btn:hover { background:rgba(239,68,68,.25); color:#ef4444; }
 
     .empty-rides {
       grid-column:1/-1; text-align:center;
@@ -618,6 +619,20 @@
     .auth-title { font-size: 1.4rem; font-weight: 800; margin-bottom: .3rem; }
     .auth-sub { font-size: .82rem; color: var(--z5); margin-bottom: 1.75rem; }
     .auth-err { font-size: .78rem; color: #ef4444; margin-top: .6rem; min-height: 1em; }
+
+    /* ─── TOAST / UNDO ─── */
+    .toast {
+      position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+      background: rgba(18,18,20,.95); border: 1px solid var(--z7);
+      padding: .8rem 1.2rem; border-radius: 1rem; z-index: 1000;
+      display: flex; align-items: center; gap: 1rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      animation: slideUp .3s ease-out;
+    }
+    .toast-undo {
+      color: var(--p4); font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: .75rem;
+      padding: .4rem .8rem; background: rgba(139,92,246,.1); border-radius: .5rem;
+    }
+    .toast-undo:hover { background: rgba(139,92,246,.2); }
 
     /* ═══════════════════════════════════════════════════
        MODAL
@@ -1040,8 +1055,8 @@
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2A19.79 19.79 0 0113.19 18.9a19.5 19.5 0 01-5.1-5.1 19.79 19.79 0 01-3.07-8.63A2 2 0 017 3h3a2 2 0 012 1.72 12.84 12.84 0 00.7 2.81 2 2 0 01-.45 2.11L11.09 10.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 17.92z"/></svg> 
         Phone
       </div>
-      <div id="sPhone" style="font-size: 1rem; font-weight: 600; padding: .5rem 0;">
-        <button class="btn-secondary" onclick="revealPhone()" style="padding:.2rem .6rem">Show Contact</button>
+      <div id="sPhone" style="font-size: 1.1rem; font-weight: 700; padding: .5rem 0; color: var(--z1);">
+        <button class="btn-primary" id="sPhoneBtn" style="padding:.4rem 1rem; width: 100%; font-size: .9rem;">📞 Show Contact</button>
       </div>
     </div>
 
@@ -1140,6 +1155,7 @@ let pendingFrac  = null;
 let mkIdSeed     = 1000;
 let selColor     = '#8b5cf6';
 let calYear, calMonth;     // calendar display month
+let deletionLog  = [];     // For undo functionality
 
 
 /* ──────────────────────────────────────────────────
@@ -1757,15 +1773,32 @@ function submitMarker() {
 function renderMarkers() {
   const cont = document.getElementById('tlMarkers');
   const names = document.getElementById('tlNames');
-  const markers = loadMk(activeDate);
+  const markers = [...loadMk(activeDate)].sort((a,b) => a.frac - b.frac);
   cont.innerHTML = ''; names.innerHTML = '';
+
+  // Handle overlaps by staggering vertical position
+  const WINDOW = 0.02; // Roughly 30 mins
+  const stacks = [];
 
   markers.forEach(mk => {
     const [h,m] = mk.time.split(':').map(Number);
     const ts = timeStr(h,m);
+    
+    // Find stack height
+    let level = 0;
+    for (let i = stacks.length - 1; i >= 0; i--) {
+      if (Math.abs(stacks[i] - mk.frac) < WINDOW) {
+        level++;
+      }
+    }
+    stacks.push(mk.frac);
+
     const el = document.createElement('div');
     el.className = 'marker';
     el.style.left = `${mk.frac*100}%`;
+    el.style.top = `${50 + (level * 15)}%`; // Shift down if overlapping
+    el.style.zIndex = 10 + level;
+    
     el.onclick = (e) => { e.stopPropagation(); viewMarker(mk.id); };
     el.innerHTML = `
       <div class="marker-pin" style="background:${mk.color}"></div>
@@ -1777,7 +1810,7 @@ function renderMarkers() {
           <button class="tt-phone-btn" onclick="event.stopPropagation();this.textContent=this.dataset.ph;this.style.color='var(--p3)';this.style.borderStyle='solid'" data-ph="${escHtml(mk.phone)}">📞 Tap to show number</button>
         </div>
       </div>
-      <div class="marker-label">${escHtml(mk.name.split(' ')[0])}</div>`;
+      <div class="marker-label" style="top: ${level > 0 ? 'auto' : 'calc(100% + 6px)'}; bottom: ${level > 0 ? 'calc(100% + 6px)' : 'auto'}">${escHtml(mk.name.split(' ')[0])}</div>`;
     cont.appendChild(el);
   });
 }
@@ -1788,8 +1821,13 @@ function viewMarker(id) {
   const [h, m] = mk.time.split(':').map(Number);
   document.getElementById('sName').textContent = mk.name;
   document.getElementById('sTime').textContent = timeStr(h, m);
-  const phEl = document.getElementById('sPhone');
-  phEl.innerHTML = `<button class="btn-secondary" style="padding:.25rem .75rem;font-size:.8rem" onclick="this.outerHTML='<span class=ph-revealed>${escHtml(mk.phone)}</span>'">📞 Click to reveal number</button>`;
+  
+  const phBtn = document.getElementById('sPhoneBtn');
+  phBtn.textContent = '📞 Reveal & Call';
+  phBtn.onclick = () => {
+    phBtn.outerHTML = `<a href="tel:${mk.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(mk.phone)}</a>`;
+  };
+
   const fromEl = document.getElementById('sFrom');
   if (fromEl) fromEl.textContent = mk.from || 'VIT CHENNAI';
   document.getElementById('sLoc').textContent = mk.location;
@@ -1828,12 +1866,15 @@ function renderRides() {
     return `<div class="ride-card slide-up" onclick="viewMarker(${mk.id})" style="cursor:pointer">
       <div class="ride-accent" style="background:${mk.color}"></div>
       <div class="ride-inner">
-        <div class="ride-name">${escHtml(mk.name)}</div>
-        <div class="ride-time" style="color:${mk.color}">${ts}</div>
+        <div class="ride-name" style="font-size: 1rem; margin-bottom: .2rem;">${escHtml(mk.name)}</div>
+        <div class="ride-time" style="color:${mk.color}; font-size: .85rem; font-weight: 800; margin-bottom: .5rem;">${ts}</div>
         <div class="ride-meta">
-          <div class="ride-meta-r">
-            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            ⤵ ${escHtml(mk.location)}
+          <div class="ride-meta-r" style="color: var(--z1); font-weight: 500;">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span style="white-space: normal; line-height: 1.2;">To: ${escHtml(mk.location)}</span>
+          </div>
+          <div class="ride-meta-r" style="margin-top: .3rem; font-size: .7rem; opacity: 0.7;">
+            From: ${escHtml(mk.from || 'VIT CHENNAI')}
           </div>
         </div>
       </div>
@@ -1843,10 +1884,30 @@ function renderRides() {
 }
 
 function deleteMk(id) {
+  const mk = [...loadMk(activeDate), ...Object.values(_cache).flat()].find(m => m.id === id);
+  const name = mk ? mk.name : 'Rider';
+  
   deleteMkFromR2(id).then(() => {
     if (window.location.hash === '#admin') renderAdmin();
     else { renderMarkers(); renderRides(); renderConsolidated(); renderCalendar(); }
+    
+    showToast('🗑️', `${name} deleted`, true);
   });
+}
+
+function showToast(icon, msg, showUndo = false) {
+  // Remove existing toast
+  const old = document.querySelector('.toast');
+  if (old) old.remove();
+
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `
+    <span>${icon} ${msg}</span>
+    ${showUndo ? '<span class="toast-undo" onclick="undoDelete()">Undo</span>' : ''}
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => { if (el.parentNode) el.remove(); }, 5000);
 }
 
 
