@@ -25,6 +25,10 @@ const dateKey    = (d) => `markers/${d}.json`;
 const indexKey   = 'markers/index.json';
 const deletedKey = 'markers/deleted.json';
 
+// In-memory rate limiting map for Cloudflare Worker Isolate
+const ipLimits = new Map();
+const TURNSTILE_SECRET = '0x4AAAAAADAOslIWACsmOGzFebByluWx2EE';
+
 async function getIndex(bucket) {
   const obj = await bucket.get(indexKey);
   if (!obj) return [];
@@ -128,12 +132,56 @@ export async function onRequest(ctx) {
       return json({ error: 'Forbidden' }, 403);
     }
     
+    const isAdmin = await checkAdmin();
     const dates = await getIndex(bucket);
     const result = {};
     await Promise.all(dates.map(async (d) => {
-      result[d] = await getDateMarkers(bucket, d);
+      const dayMarkers = await getDateMarkers(bucket, d);
+      if (!isAdmin) {
+        dayMarkers.forEach(m => {
+          if (m.phone) m.phone = '🔒 Click to Reveal';
+        });
+      }
+      result[d] = dayMarkers;
     }));
     return json(result);
+  }
+
+  // POST /api/reveal — fetch unmasked phone number
+  if (path === '/api/reveal' && request.method === 'POST') {
+    let body;
+    try { body = await request.json(); } catch { return json({ error: 'Invalid JSON' }, 400); }
+    const { id, date, token } = body;
+    if (!id || !date) return json({ error: 'Missing id or date' }, 400);
+
+    const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+    const lastReq = ipLimits.get(ip) || 0;
+    const timeSince = Date.now() - lastReq;
+
+    if (timeSince < 60000) {
+      if (!token) return json({ error: 'Rate limited' }, 429);
+      
+      const formData = new FormData();
+      formData.append('secret', TURNSTILE_SECRET);
+      formData.append('response', token);
+      formData.append('remoteip', ip);
+      
+      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+        method: 'POST',
+        body: formData
+      });
+      const outcome = await verifyRes.json();
+      if (!outcome.success) return json({ error: 'Invalid CAPTCHA' }, 403);
+    }
+
+    const dayMarkers = await getDateMarkers(bucket, date);
+    const mk = dayMarkers.find(m => m.id == id);
+    if (!mk) return json({ error: 'Marker not found' }, 404);
+
+    if (ipLimits.size > 10000) ipLimits.clear(); // Prevent memory leak
+    ipLimits.set(ip, Date.now());
+    
+    return json({ phone: mk.phone });
   }
 
   // POST /api/markers — add marker

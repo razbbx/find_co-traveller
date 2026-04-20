@@ -10,6 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet" />
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <style>
     /* ─── RESET & ROOT ─────────────────────────────────── */
     *,
@@ -2542,9 +2543,11 @@
     async function fetchAllFromR2() {
       if (!IS_CF) return; // local: rely on localStorage
       try {
-        const res = await fetch(API, {
-          headers: { 'X-Carpool-Client': 'true' }
-        });
+        const headers = { 'X-Carpool-Client': 'true' };
+        const localAdmin = localStorage.getItem('cs_admin');
+        if (localAdmin) headers['X-Admin-Pass'] = localAdmin;
+
+        const res = await fetch(API, { headers });
         if (!res.ok) return;
         const data = await res.json(); // { "YYYY-MM-DD": [...], ... }
         Object.assign(_cache, data);
@@ -3254,7 +3257,7 @@
         <div class="tt-name">${escHtml(mk.name)}</div>
         <div class="tt-row"><span>📍</span>${escHtml(mk.location)}</div>
         <div class="tt-row" style="margin-top:.3rem">
-          <button class="tt-phone-btn" onclick="event.stopPropagation();this.textContent=this.dataset.ph;this.style.color='var(--p3)';this.style.borderStyle='solid'" data-ph="${escHtml(mk.phone)}">📞 Tap to show number</button>
+          <button class="tt-phone-btn" onclick="event.stopPropagation(); viewMarker(${mk.id}, ${mk.ts || 'null'})">📞 Tap to view details</button>
         </div>
       </div>
       <div class="marker-label" style="top: ${level > 0 ? 'auto' : 'calc(100% + 6px)'}; bottom: ${level > 0 ? 'calc(100% + 6px)' : 'auto'}">${escHtml(mk.name.split(' ')[0])}</div>`;
@@ -3272,11 +3275,14 @@
       document.getElementById('sTime').textContent = timeStr(h, m);
 
       const phoneContainer = document.getElementById('sPhone');
-      phoneContainer.innerHTML = `<button class="btn-primary" id="sPhoneBtn" style="padding:.4rem 1rem; width: 100%; font-size: .9rem;">📞 Reveal</button>`;
-      
-      document.getElementById('sPhoneBtn').onclick = () => {
+      if (mk.phone && !mk.phone.includes('Reveal')) {
         phoneContainer.innerHTML = `<a href="tel:${mk.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(mk.phone)}</a>`;
-      };
+      } else {
+        phoneContainer.innerHTML = `<button class="btn-primary" id="sPhoneBtn" style="padding:.4rem 1rem; width: 100%; font-size: .9rem;">📞 Reveal</button>`;
+        document.getElementById('sPhoneBtn').onclick = () => {
+          doReveal(mk.id, mk.date || activeDate, phoneContainer);
+        };
+      }
 
       const fromEl = document.getElementById('sFrom');
       if (fromEl) fromEl.textContent = mk.from || 'VIT CHENNAI';
@@ -3288,6 +3294,51 @@
     function closeSummary() {
       document.body.classList.remove('keyboard-active');
       document.getElementById('summaryModal').classList.add('hidden');
+    }
+
+    async function doReveal(id, date, containerEl, token = '') {
+      const originalHtml = containerEl.innerHTML;
+      containerEl.innerHTML = '<span style="color:var(--z5); display:block; text-align:center; padding:.5rem;">Securely fetching...</span>';
+      
+      try {
+        const res = await fetch(API.replace('/markers', '/reveal'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, date, token })
+        });
+        
+        const data = await res.json();
+        
+        if (!res.ok) {
+          if (res.status === 429) {
+            containerEl.innerHTML = `
+              <div style="font-size:0.85rem; color:var(--z4); margin-bottom:.5rem; text-align:center;">Security Check Required:</div>
+              <div id="cf-turnstile-box-${id}" style="display:flex; justify-content:center;"></div>
+            `;
+            turnstile.render(`#cf-turnstile-box-${id}`, {
+              sitekey: '0x4AAAAAADAOsrNXcviCxcOc',
+              callback: function(tkn) {
+                doReveal(id, date, containerEl, tkn);
+              }
+            });
+            return;
+          }
+          throw new Error(data.error || 'Failed to reveal');
+        }
+        
+        // Success
+        containerEl.innerHTML = `<a href="tel:${data.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(data.phone)}</a>`;
+        
+        // Update local cache so it doesn't mask again until refresh
+        if (_cache[date]) {
+          const mk = _cache[date].find(m => m.id == id);
+          if (mk) mk.phone = data.phone;
+        }
+        
+      } catch (err) {
+        containerEl.innerHTML = `<span style="color:#ef4444; font-size:.8rem; display:block; text-align:center;">${err.message}</span>`;
+        setTimeout(() => { containerEl.innerHTML = originalHtml; }, 3000);
+      }
     }
 
 
