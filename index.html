@@ -2382,9 +2382,6 @@
 
       <div style="display:flex;gap:.65rem;margin-top:1.5rem">
         <button class="btn-secondary" style="flex:1" onclick="closeSummary()">Close</button>
-        <button class="btn-secondary" id="sDelBtn" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.2);">
-          Delete
-        </button>
       </div>
     </div>
   </div>
@@ -3239,7 +3236,6 @@
       const fromEl = document.getElementById('sFrom');
       if (fromEl) fromEl.textContent = mk.from || 'VIT CHENNAI';
       document.getElementById('sLoc').textContent = mk.location;
-      document.getElementById('sDelBtn').onclick = () => { deleteMk(mk.id, activeDate); closeSummary(); };
       document.body.classList.add('keyboard-active');
       document.getElementById('summaryModal').classList.remove('hidden');
     }
@@ -3287,7 +3283,6 @@
           </div>
         </div>
       </div>
-      <button class="del-btn" onclick="event.stopPropagation();deleteMk(${mk.id}, '${activeDate}')" title="Remove">✕</button>
     </div>`;
       }).join('');
     }
