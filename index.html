@@ -3228,7 +3228,7 @@
       document.getElementById('sTime').textContent = timeStr(h, m);
 
       const phBtn = document.getElementById('sPhoneBtn');
-      phBtn.textContent = '📞 Reveal & Call';
+      phBtn.textContent = '📞 Reveal';
       phBtn.onclick = () => {
         phBtn.outerHTML = `<a href="tel:${mk.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(mk.phone)}</a>`;
       };
