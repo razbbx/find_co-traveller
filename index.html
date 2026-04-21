@@ -2768,7 +2768,9 @@
         if (res.ok && (await res.json()).ok) {
           adminUnlocked = true;
           adminPass = val;
+          localStorage.setItem('cs_admin', val); 
           document.getElementById('adminAuthGate').style.display = 'none';
+          await fetchAllFromR2();
           renderAdmin();
           return;
         }
@@ -3307,9 +3309,12 @@
       }
 
       try {
+        const headers = { 'Content-Type': 'application/json' };
+        if (adminPass) headers['X-Admin-Pass'] = adminPass;
+        
         const res = await fetch(API.replace('/markers', '/reveal'), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ id, date, token, sessionId })
         });
         

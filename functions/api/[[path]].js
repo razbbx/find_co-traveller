@@ -157,27 +157,30 @@ export async function onRequest(ctx) {
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
     const trackerId = sessionId; // Track by browser session, not IP
     
+    const isAdmin = await checkAdmin();
     const ipData = ipLimits.get(trackerId) || { count: 0, lastReq: 0 };
     const timeSince = Date.now() - ipData.lastReq;
 
-    if (ipData.count >= 5) {
-      return json({ error: 'Session limit reached (Max 5 reveals). Please try again later.' }, 403);
-    }
+    if (!isAdmin) {
+      if (ipData.count >= 5) {
+        return json({ error: 'Session limit reached (Max 5 reveals). Please try again later.' }, 403);
+      }
 
-    if (timeSince < 60000 && ipData.count > 0) {
-      if (!token) return json({ error: 'Rate limited', waitMs: 60000 - timeSince }, 429);
-      
-      const formData = new FormData();
-      formData.append('secret', TURNSTILE_SECRET);
-      formData.append('response', token);
-      formData.append('remoteip', ip);
-      
-      const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-        method: 'POST',
-        body: formData
-      });
-      const outcome = await verifyRes.json();
-      if (!outcome.success) return json({ error: 'Invalid CAPTCHA' }, 403);
+      if (timeSince < 60000 && ipData.count > 0) {
+        if (!token) return json({ error: 'Rate limited', waitMs: 60000 - timeSince }, 429);
+        
+        const formData = new FormData();
+        formData.append('secret', TURNSTILE_SECRET);
+        formData.append('response', token);
+        formData.append('remoteip', ip);
+        
+        const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
+          method: 'POST',
+          body: formData
+        });
+        const outcome = await verifyRes.json();
+        if (!outcome.success) return json({ error: 'Invalid CAPTCHA' }, 403);
+      }
     }
 
     const dayMarkers = await getDateMarkers(bucket, date);
