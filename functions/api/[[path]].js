@@ -27,7 +27,8 @@ const deletedKey = 'markers/deleted.json';
 
 // In-memory rate limiting map for Cloudflare Worker Isolate
 const ipLimits = new Map();
-const TURNSTILE_SECRET = '0x4AAAAAADAOslIWACsmOGzFebByluWx2EE';
+// TURNSTILE_SECRET must be set in Cloudflare Pages environment variables,
+// never hardcoded in source. Reads from env inside the handler below.
 
 async function getIndex(bucket) {
   const obj = await bucket.get(indexKey);
@@ -188,7 +189,7 @@ export async function onRequest(ctx) {
         if (!token) return json({ error: 'Rate limited', waitMs: 60000 - timeSince }, 429);
 
         const formData = new FormData();
-        formData.append('secret', TURNSTILE_SECRET);
+        formData.append('secret', env.TURNSTILE_SECRET);
         formData.append('response', token);
         formData.append('remoteip', ip);
 
