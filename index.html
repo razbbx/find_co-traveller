@@ -2393,11 +2393,14 @@
       <div style="font-size: 3rem; margin-bottom: 1rem;">⚠️</div>
       <div style="font-size: 1.25rem; font-weight: 700; color: var(--z1); margin-bottom: 0.5rem;">Delete Rider?</div>
       <div style="font-size: 0.95rem; color: var(--z5); line-height: 1.5; margin-bottom: 1.5rem;">
-        Are you sure you want to delete <span id="confirmName" style="color: var(--p4); font-weight: 700;"></span>? This action can be undone later from the recycle bin.
+        Are you sure you want to delete <span id="confirmName" style="color: var(--p4); font-weight: 700;"></span>? This
+        action can be undone later from the recycle bin.
       </div>
       <div style="display: flex; gap: 0.75rem;">
         <button class="btn-secondary" style="flex: 1;" onclick="closeConfirmModal()">Cancel</button>
-        <button class="btn-primary" style="flex: 1; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3);" id="confirmBtn">Yes, Delete</button>
+        <button class="btn-primary"
+          style="flex: 1; background: #ef4444; border-color: #ef4444; box-shadow: 0 4px 15px rgba(239,68,68,0.3);"
+          id="confirmBtn">Yes, Delete</button>
       </div>
     </div>
   </div>
@@ -2496,7 +2499,9 @@
       <div class="admin-section" style="margin-top: 2rem;">
         <div class="admin-section-hdr">
           <h2 style="color: var(--p3);">📜 System Audit Logs</h2>
-          <span class="badge" id="auditBadge" style="background: rgba(139,92,246,0.1); color: var(--p3); border-color: rgba(139,92,246,0.2);">0 events</span>
+          <span class="badge" id="auditBadge"
+            style="background: rgba(139,92,246,0.1); color: var(--p3); border-color: rgba(139,92,246,0.2);">0
+            events</span>
         </div>
         <div class="admin-table-wrap" style="border-color: rgba(139,92,246,0.2);">
           <table class="admin-table">
@@ -2581,7 +2586,7 @@
         let idx = -1;
         if (ts) idx = (_cache[d] || []).findIndex(m => m.id == id && m.ts == ts);
         if (idx === -1) idx = (_cache[d] || []).findIndex(m => m.id == id); // Fallback
-        
+
         if (idx !== -1) {
           const [removed] = _cache[d].splice(idx, 1);
 
@@ -2600,7 +2605,7 @@
             try {
               let url = `${API}/${id}?date=${d}`;
               if (ts) url += `&ts=${ts}`;
-              await fetch(url, { 
+              await fetch(url, {
                 method: 'DELETE',
                 headers: { 'X-Admin-Pass': adminPass }
               });
@@ -2630,7 +2635,7 @@
         try {
           await fetch('/api/restore', {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'X-Admin-Pass': adminPass
             },
@@ -2652,7 +2657,7 @@
         try {
           const res = await fetch('/api/restore', {
             method: 'POST',
-            headers: { 
+            headers: {
               'Content-Type': 'application/json',
               'X-Admin-Pass': adminPass
             },
@@ -2768,7 +2773,7 @@
         if (res.ok && (await res.json()).ok) {
           adminUnlocked = true;
           adminPass = val;
-          localStorage.setItem('cs_admin', val); 
+          localStorage.setItem('cs_admin', val);
           document.getElementById('adminAuthGate').style.display = 'none';
           await fetchAllFromR2();
           renderAdmin();
@@ -3203,9 +3208,9 @@
 
       const [h, m] = t.split(':').map(Number);
       const frac = pendingFrac !== null ? pendingFrac : (h * 60 + m) / (24 * 60);
-      const mk = { 
-        id: Date.now() + Math.floor(Math.random() * 1000), 
-        name, phone, from, location: loc, time: t, frac, color: selColor, ts: Date.now() 
+      const mk = {
+        id: Date.now() + Math.floor(Math.random() * 1000),
+        name, phone, from, location: loc, time: t, frac, color: selColor, ts: Date.now()
       };
 
       saveMkToR2(activeDate, mk).then(() => {
@@ -3301,7 +3306,7 @@
     async function doReveal(id, date, containerEl, token = '') {
       const originalHtml = containerEl.innerHTML;
       containerEl.innerHTML = '<span style="color:var(--z5); display:block; text-align:center; padding:.5rem;">Securely fetching...</span>';
-      
+
       let sessionId = localStorage.getItem('cs_session_id');
       if (!sessionId) {
         sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
@@ -3311,20 +3316,20 @@
       try {
         const headers = { 'Content-Type': 'application/json' };
         if (adminPass) headers['X-Admin-Pass'] = adminPass;
-        
+
         const res = await fetch(API.replace('/markers', '/reveal'), {
           method: 'POST',
           headers,
           body: JSON.stringify({ id, date, token, sessionId })
         });
-        
+
         const data = await res.json();
-        
+
         if (!res.ok) {
           if (res.status === 429) {
             const waitMs = data.waitMs || 60000;
             const targetTime = Date.now() + waitMs;
-            
+
             containerEl.innerHTML = `
               <div style="text-align:center;">
                 <button class="btn-secondary" id="timerBtn-${id}" disabled style="width:100%; margin-bottom:.5rem;">Wait 60s</button>
@@ -3333,11 +3338,11 @@
               </div>
               <div id="cf-turnstile-box-${id}" style="display:none; justify-content:center; margin-top:.5rem;"></div>
             `;
-            
+
             const timerBtn = document.getElementById(`timerBtn-${id}`);
             const bypassBtn = document.getElementById(`bypassBtn-${id}`);
             const tsBox = document.getElementById(`cf-turnstile-box-${id}`);
-            
+
             const intv = setInterval(() => {
               const remain = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
               if (remain <= 0) {
@@ -3354,13 +3359,13 @@
                 if (timerBtn) timerBtn.textContent = `Wait ${remain}s`;
               }
             }, 1000);
-            
+
             bypassBtn.onclick = () => {
               bypassBtn.style.display = 'none';
               tsBox.style.display = 'flex';
               turnstile.render(`#cf-turnstile-box-${id}`, {
                 sitekey: '0x4AAAAAADAOsrNXcviCxcOc',
-                callback: function(tkn) {
+                callback: function (tkn) {
                   clearInterval(intv);
                   doReveal(id, date, containerEl, tkn);
                 }
@@ -3370,16 +3375,16 @@
           }
           throw new Error(data.error || 'Failed to reveal');
         }
-        
+
         // Success
         containerEl.innerHTML = `<a href="tel:${data.phone}" class="ph-revealed" style="color:var(--p4); text-decoration:none; font-size:1.2rem; display:block; text-align:center; padding:.5rem;">📞 ${escHtml(data.phone)}</a>`;
-        
+
         // Update local cache so it doesn't mask again until refresh
         if (_cache[date]) {
           const mk = _cache[date].find(m => m.id == id);
           if (mk) mk.phone = data.phone;
         }
-        
+
       } catch (err) {
         containerEl.innerHTML = `<span style="color:#ef4444; font-size:.8rem; display:block; text-align:center;">${err.message}</span>`;
         setTimeout(() => { containerEl.innerHTML = originalHtml; }, 3000);
@@ -3665,10 +3670,10 @@
         } else {
           auditTable.innerHTML = events.map(ev => {
             const dateObj = ev.ts ? new Date(ev.ts) : null;
-            const eventTimeStr = dateObj && dateObj.getFullYear() > 2000 ? dateObj.toLocaleString('en-US', { month:'short', day:'numeric', hour:'numeric', minute:'2-digit'}) : 'Unknown Time';
+            const eventTimeStr = dateObj && dateObj.getFullYear() > 2000 ? dateObj.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'Unknown Time';
             const actionColor = ev.action === 'ADDED' ? '#10b981' : '#ef4444';
             const actionBg = ev.action === 'ADDED' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)';
-            
+
             return `
             <tr>
               <td style="font-size:0.8rem; color:var(--z5)">${eventTimeStr}</td>

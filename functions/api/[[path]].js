@@ -21,8 +21,8 @@ function json(data, status = 200) {
 }
 
 // R2 key helpers
-const dateKey    = (d) => `markers/${d}.json`;
-const indexKey   = 'markers/index.json';
+const dateKey = (d) => `markers/${d}.json`;
+const indexKey = 'markers/index.json';
 const deletedKey = 'markers/deleted.json';
 
 // In-memory rate limiting map for Cloudflare Worker Isolate
@@ -81,10 +81,28 @@ export async function onRequest(ctx) {
     return new Response(null, { status: 204, headers: CORS });
   }
 
+  // Basic anti-scraping Origin check for state-changing requests
+  if (['POST', 'DELETE'].includes(request.method)) {
+    const origin = request.headers.get('Origin');
+    if (origin) {
+      try {
+        const originUrl = new URL(origin);
+        // If the origin exists and is not the same host and not localhost, block it.
+        // This stops simple form posts from external sites.
+        if (originUrl.host !== url.host && !originUrl.host.includes('localhost') && !originUrl.host.includes('127.0.0.1')) {
+          return json({ error: 'Invalid Origin' }, 403);
+        }
+      } catch (e) {
+        return json({ error: 'Invalid Origin Header' }, 403);
+      }
+    }
+  }
+
   // Helper to check admin access
   const checkAdmin = async () => {
     const auth = request.headers.get('X-Admin-Pass');
-    const ADMIN_PASS = env.ADMIN_PASS || 'jayanuskariddhi';
+    const ADMIN_PASS = env.ADMIN_PASS;
+    if (!ADMIN_PASS) return false;
     return auth === ADMIN_PASS;
   };
 
@@ -131,7 +149,7 @@ export async function onRequest(ctx) {
     if (request.headers.get('X-Carpool-Client') !== 'true') {
       return json({ error: 'Forbidden' }, 403);
     }
-    
+
     const isAdmin = await checkAdmin();
     const dates = await getIndex(bucket);
     const result = {};
@@ -156,7 +174,7 @@ export async function onRequest(ctx) {
 
     const ip = request.headers.get('cf-connecting-ip') || 'unknown';
     const trackerId = sessionId; // Track by browser session, not IP
-    
+
     const isAdmin = await checkAdmin();
     const ipData = ipLimits.get(trackerId) || { count: 0, lastReq: 0 };
     const timeSince = Date.now() - ipData.lastReq;
@@ -168,12 +186,12 @@ export async function onRequest(ctx) {
 
       if (timeSince < 60000 && ipData.count > 0) {
         if (!token) return json({ error: 'Rate limited', waitMs: 60000 - timeSince }, 429);
-        
+
         const formData = new FormData();
         formData.append('secret', TURNSTILE_SECRET);
         formData.append('response', token);
         formData.append('remoteip', ip);
-        
+
         const verifyRes = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
           method: 'POST',
           body: formData
@@ -188,11 +206,11 @@ export async function onRequest(ctx) {
     if (!mk) return json({ error: 'Marker not found' }, 404);
 
     if (ipLimits.size > 10000) ipLimits.clear(); // Prevent memory leak
-    
+
     ipData.count += 1;
     ipData.lastReq = Date.now();
     ipLimits.set(trackerId, ipData);
-    
+
     return json({ phone: mk.phone });
   }
 

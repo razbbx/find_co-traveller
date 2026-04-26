@@ -37,7 +37,9 @@ export async function onRequest(ctx) {
     return json({ error: 'Invalid JSON' }, 400);
   }
 
-  const ADMIN_PASS = env.ADMIN_PASS || 'jayanuskariddhi';
-  const ok = body.pass === ADMIN_PASS;
+  const ADMIN_PASS = env.ADMIN_PASS;
+  // If ADMIN_PASS is not configured as an env variable, refuse all auth.
+  // Never fall back to a hardcoded default — that password is now public.
+  const ok = !!ADMIN_PASS && body.pass === ADMIN_PASS;
   return json({ ok });
 }
